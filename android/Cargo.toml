@@ -21,6 +21,10 @@ crate-type = ["cdylib"]
 photocraft-engine = { path = "../upstream/crates/engine" }
 photocraft-codecs = { path = "../upstream/crates/codecs", features = ["heif"] }  # BR-1
 photocraft-ui-egui = { path = "../upstream/crates/ui-egui" }
+photocraft-io = { path = "../upstream/crates/io" }
+photocraft-format = { path = "../upstream/crates/format" }
+photocraft-doc = { path = "../upstream/crates/doc" }
+photocraft-raster = { path = "../upstream/crates/raster" }
 eframe = { version = "0.36", default-features = false, features = [
     "android-game-activity",
     "wgpu",

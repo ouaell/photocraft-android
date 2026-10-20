@@ -58,7 +58,7 @@ jobs:
           persist-credentials: false
           clean: true
 
-      - name: seed lock (bootstrap only: while android/Cargo.lock is not committed)
+      - name: "seed lock (bootstrap: android/Cargo.lock not committed yet)"
         if: ${{ ! hashFiles('android/Cargo.lock') }}
         run: |
           rustc --version && cargo --version

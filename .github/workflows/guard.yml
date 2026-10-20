@@ -64,7 +64,8 @@ jobs:
           rustc --version && cargo --version
           UP="${UPSTREAM_DIR:-upstream}"
           cp "$UP/Cargo.lock" android/Cargo.lock
-          CARGO_TARGET_DIR="$RUNNER_TEMP/target" cargo generate-lockfile --manifest-path android/Cargo.toml
+          cargo tree -e normal --manifest-path android/Cargo.toml > "$RUNNER_TEMP/cargo-tree.txt" 2>&1
+          cargo tree -e normal --manifest-path android/Cargo.toml > /dev/null 2>&1 || { cat "$RUNNER_TEMP/cargo-tree.txt"; exit 1; }
           cp android/Cargo.lock "$RUNNER_TEMP/generated-Cargo.lock"
 
       - name: run parity checks

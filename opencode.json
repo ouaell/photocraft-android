@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "PLAN.md",
+    "STATE.md"
+  ],
+  "permission": {
+    "edit": {
+      "*": "allow",
+      "upstream/**": "deny",
+      "AGENTS.md": "deny",
+      "PLAN.md": "deny",
+      "opencode.json": "deny",
+      "scripts/guard-upstream.sh": "deny",
+      ".opencode/agents/**": "deny",
+      ".opencode/skills/**": "deny",
+      "docs/device-day.md": "allow"
+    },
+    "bash": {
+      "*": "allow",
+      "cargo update*": "deny",
+      "cargo fmt*": "deny",
+      "cargo fix*": "deny",
+      "git push --force*": "deny",
+      "git push -f*": "deny",
+      "rm -rf upstream*": "deny"
+    },
+    "skill": {
+      "*": "deny",
+      "photocraft-port": "allow",
+      "eframe-android-shell": "allow",
+      "android-ci-verification": "allow",
+      "android-cli": "allow",
+      "android-intent-security": "allow",
+      "rust-jni": "allow",
+      "rust-android-build": "allow",
+      "rust-panic-safety": "allow",
+      "ffi-error-progress-cancel": "allow",
+      "rust-debugging": "allow",
+      "rust-observability": "allow",
+      "cargo-workflows": "allow",
+      "rust-native-linking": "allow",
+      "rust-unsafe": "allow",
+      "rust-lints": "allow",
+      "rust-security": "allow"
+    }
+  }
+}

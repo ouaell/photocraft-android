@@ -8,7 +8,7 @@ fail=0
 say() { printf 'SCOPE: %s\n' "$*" >&2; }
 
 FORBIDDEN_UP="testkit automation"
-ALLOW_EXT="eframe egui log jni android-activity serde serde_json bytemuck thiserror flate2"
+ALLOW_EXT="eframe egui log jni android-activity android_logger winit serde serde_json bytemuck thiserror flate2"
 
 # parse `name = { ... }` dependency entries; $1=manifest; emits "<name> <table>" lines
 parse_deps() {

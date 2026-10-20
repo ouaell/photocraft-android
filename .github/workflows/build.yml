@@ -1,0 +1,124 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: native build (cargo-ndk) + gradle apks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: checkout repo (with upstream submodule, read-only)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+          clean: true
+
+      - name: checkout craft-fonts at the pinned rev (BR-2)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: storytold/craft-fonts
+          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
+          path: craft-fonts
+          persist-credentials: false
+
+      - name: toolchain facts
+        run: |
+          set -o pipefail
+          {
+            rustc --version
+            cargo --version
+            java -version
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            ls "$ANDROID_HOME/ndk" | tail -2
+            ls "$ANDROID_HOME/build-tools" | tail -2
+          } | tee toolchainfacts.txt
+
+      - name: rust android targets
+        run: |
+          set -o pipefail
+          rustup target add aarch64-linux-android x86_64-linux-android
+          rustup target list --installed | tee -a toolchainfacts.txt
+
+      - name: pick the NDK revision this image has (decision 003 pins 28.2.13676358)
+        run: |
+          set -o pipefail
+          if [ -d "$ANDROID_HOME/ndk/28.2.13676358" ]; then
+            export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          else
+            export ANDROID_NDK_HOME="$(ls -d "$ANDROID_HOME/ndk/"* | sort | tail -1)"
+            echo "::warning::NDK 28.2.13676358 not present; using $(basename "$ANDROID_NDK_HOME")"
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
+          echo "NDK: $(basename "$ANDROID_NDK_HOME")" | tee -a toolchainfacts.txt
+
+      - name: "install cargo-ndk 4.1.2 (crates.io 2025-08-09, decision 008)"
+        run: |
+          set -o pipefail
+          cargo install cargo-ndk --version 4.1.2 --locked
+          cargo ndk --version | tee -a toolchainfacts.txt
+
+      - name: cargo ndk build (both CI abis, locked, fonts embedded per decision 007/BR-2)
+        working-directory: android
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+          CRAFT_FONTS_REQUIRED: "1"
+        run: |
+          set -o pipefail
+          cargo ndk -t aarch64-linux-android -t x86_64-linux-android -o app/src/main/jniLibs build --release --locked 2>&1 | tee cargo-ndk.log
+
+      - name: jniLibs + ELF 16 KB alignment facts
+        run: |
+          set -o pipefail
+          ls -laR android/app/src/main/jniLibs | tee jnilibs.txt
+          for so in android/app/src/main/jniLibs/*/libpicsh.so; do
+            echo "== $so ==" | tee -a jnilibs.txt
+            readelf -lW "$so" | grep -E 'LOAD' | tee -a jnilibs.txt
+          done
+
+      - name: gradle session (9.1.0 per decision 003)
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: "9.1.0"
+
+      - name: gradle assembleDebug + assembleRelease
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle -p . assembleDebug assembleRelease --no-daemon 2>&1 | tee gradle-build.log
+
+      - name: APK 16 KB page-alignment gate (extension of check-16kb.sh to packaging)
+        run: |
+          set -o pipefail
+          BT="$(ls -d "$ANDROID_HOME/build-tools/"* | sort | tail -1)/zipalign"
+          for apk in android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/release/app-release-unsigned.apk; do
+            echo "zipalign -c -P 16 $apk" | tee -a zipalign.txt
+            "$BT" -c -P 16 "$apk" | tee -a zipalign.txt
+          done
+          cat zipalign.txt
+
+      - name: upload build evidence and APKs (always, red or green)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-evidence-${{ github.run_id }}
+          path: |
+            toolchainfacts.txt
+            jnilibs.txt
+            gradle-build.log
+            cargo-ndk.log
+            zipalign.txt
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: warn

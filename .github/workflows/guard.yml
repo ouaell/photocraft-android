@@ -62,7 +62,8 @@ jobs:
         if: ${{ ! hashFiles('android/Cargo.lock') }}
         run: |
           rustc --version && cargo --version
-          cp "$UPSTREAM_DIR/Cargo.lock" android/Cargo.lock
+          UP="${UPSTREAM_DIR:-upstream}"
+          cp "$UP/Cargo.lock" android/Cargo.lock
           CARGO_TARGET_DIR="$RUNNER_TEMP/target" cargo generate-lockfile --manifest-path android/Cargo.toml
           cp android/Cargo.lock "$RUNNER_TEMP/generated-Cargo.lock"
 

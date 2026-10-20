@@ -31,6 +31,8 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
 
 #[cfg(target_os = "android")]
 fn run(app: winit::platform::android::activity::AndroidApp) {
+    // Knobs may include RUST_LOG, so they land before the logger binds its filter.
+    jni_bridge::apply_asset_knobs(&app);
     install_logger();
 
     let dirs = match services::app_dirs(&app) {
@@ -55,7 +57,13 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
     let env_backend = std::env::var("WGPU_BACKEND").ok().filter(|v| !v.trim().is_empty());
     let plan_reason = env_backend.as_ref().map(|v| format!("WGPU_BACKEND={v} overrides the backend"));
 
-    let options = eframe::NativeOptions { renderer: eframe::Renderer::Wgpu, ..Default::default() };
+    // eframe 0.36.2 epi.rs: android_app is "required on Android to correctly create
+    // the event loop" (decision 010). AndroidApp is Clone (android-activity 0.6.1).
+    let options = eframe::NativeOptions {
+        renderer: eframe::Renderer::Wgpu,
+        android_app: Some(app.clone()),
+        ..Default::default()
+    };
     log::info!("Picsh: run_native starts (WGPU_BACKEND={:?}, PHOTOCRAFT_CPU_CANVAS={:?})", env_backend, std::env::var_os("PHOTOCRAFT_CPU_CANVAS"));
     let result = eframe::run_native(
         "Picsh",

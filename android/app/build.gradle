@@ -24,6 +24,28 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     namespace "io.github.ouaell.picsh"
+
+    // Emulator rungs (decision 009) ship their behavior knobs as a bundled,
+    // uncompressed asset that the shell reads at boot (picsh-knobs.txt).
+    androidResources {
+        noCompress 'txt'
+    }
+
+    flavorDimensions 'rung'
+    productFlavors {
+        // default ladder rung: no knobs file (wgpu auto backend)
+        rungDefault { dimension 'rung' }
+        // forced GLES backend
+        rungGles {
+            dimension 'rung'
+            applicationIdSuffix '.gles'
+        }
+        // forced CPU canvas
+        rungCpu {
+            dimension 'rung'
+            applicationIdSuffix '.cpu'
+        }
+    }
 }
 
 dependencies {

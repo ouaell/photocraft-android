@@ -96,13 +96,13 @@ jobs:
         working-directory: android
         run: |
           set -o pipefail
-          gradle -p . assembleDebug assembleRelease --no-daemon 2>&1 | tee gradle-build.log
+          gradle -p . assembleRungDefaultDebug assembleRungDefaultRelease --no-daemon 2>&1 | tee gradle-build.log
 
       - name: APK 16 KB page-alignment gate (extension of check-16kb.sh to packaging)
         run: |
           set -o pipefail
           BT="$(ls -d "$ANDROID_HOME/build-tools/"* | sort | tail -1)/zipalign"
-          for apk in android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/release/app-release-unsigned.apk; do
+          for apk in android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk android/app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk; do
             echo "zipalign -c -P 16 4 $apk" | tee -a zipalign.txt
             "$BT" -c -P 16 4 "$apk" | tee -a zipalign.txt
           done
@@ -116,9 +116,9 @@ jobs:
           path: |
             toolchainfacts.txt
             jnilibs.txt
-            gradle-build.log
-            cargo-ndk.log
+            android/gradle-build.log
+            android/cargo-ndk.log
             zipalign.txt
-            android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/apk/release/app-release-unsigned.apk
+            android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
+            android/app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk
           if-no-files-found: warn

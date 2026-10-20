@@ -1,0 +1,160 @@
+name: emulator-e2e
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: emulator-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator-e2e:
+    name: emulator-e2e (boot + 3 rendering rungs + logcat oracle)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: checkout repo (with upstream submodule, read-only)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+          clean: true
+
+      - name: checkout craft-fonts at the pinned rev (BR-2)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: storytold/craft-fonts
+          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
+          path: craft-fonts
+          persist-credentials: false
+
+      - name: toolchain facts
+        run: |
+          set -o pipefail
+          {
+            rustc --version
+            cargo --version
+            java -version
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            ls "$ANDROID_HOME/ndk"
+          } | tee e2e-toolchainfacts.txt
+
+      - name: rust android targets
+        run: |
+          set -o pipefail
+          rustup target add aarch64-linux-android x86_64-linux-android
+          rustup target list --installed | tee -a e2e-toolchainfacts.txt
+
+      - name: pick the NDK this image has
+        run: |
+          set -o pipefail
+          if [ -d "$ANDROID_HOME/ndk/28.2.13676358" ]; then
+            export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          else
+            export ANDROID_NDK_HOME="$(ls -d "$ANDROID_HOME/ndk/"* | sort | tail -1)"
+            echo "::warning::NDK 28.2.13676358 not present; using $(basename "$ANDROID_NDK_HOME")"
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
+          echo "NDK: $(basename "$ANDROID_NDK_HOME")" | tee -a e2e-toolchainfacts.txt
+
+      - name: "install cargo-ndk 4.1.2 (decision 008)"
+        run: |
+          set -o pipefail
+          cargo install cargo-ndk --version 4.1.2 --locked
+          cargo ndk --version | tee -a e2e-toolchainfacts.txt
+
+      - name: cargo ndk build (both CI abis, locked, fonts embedded)
+        working-directory: android
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+          CRAFT_FONTS_REQUIRED: "1"
+        run: |
+          set -o pipefail
+          cargo ndk -t aarch64-linux-android -t x86_64-linux-android -o app/src/main/jniLibs build --release --locked 2>&1 | tee e2e-cargo-ndk.log
+
+      - name: gradle rungs (rungDefault + rungGles + rungCpu debug apks)
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle -p . assembleRungDefaultDebug assembleRungGlesDebug assembleRungCpuDebug --no-daemon 2>&1 | tee e2e-gradle-build.log
+
+      - name: logcat oracle red proof (seeded defect, no emulator)
+        run: |
+          set -o pipefail
+          mkdir -p e2e/redproof
+          cat > e2e/redproof/seeded.logcat <<'EOF'
+          I/other/healthy log line
+          FATAL EXCEPTION: main
+          EOF
+          fp() { grep -qE 'FATAL EXCEPTION|ANR in .|Fatal signal 11|signal 11|panicked at|JNI DETECTED ERROR|UnsatisfiedLinkError|Validation Error|Device lost|StrictMode|invalid local reference' "$1"; }
+          if fp e2e/redproof/seeded.logcat; then
+            echo "RED as expected: oracle caught the seeded FATAL line" | tee e2e/redproof/red.observed
+            cp e2e/redproof/seeded.logcat e2e/redproof/red-seeded-defect.log
+          else
+            echo "ORACLE DEAF: seeded defect not caught" | tee e2e/redproof/red.NOT-seen
+            exit 1
+          fi
+          printf 'I/other/healthy log line\n' > e2e/redproof/clean.logcat
+          if fp e2e/redproof/clean.logcat; then
+            echo "ORACLE OVERREACH: clean logcat flagged" | tee e2e/redproof/baseline.red
+            exit 1
+          else
+            echo "baseline green: pure log passes" | tee e2e/redproof/baseline.green
+          fi
+
+      - name: KVM proof (log presence for the rung boots; never silently hide acceleration state)
+        run: |
+          set -o pipefail
+          mkdir -p e2e
+          if [ -e /dev/kvm ]; then
+            ls -l /dev/kvm | tee e2e/kvm.txt
+            grep -c '^0' /sys/module/kvm_intel/parameters/nested 2>/dev/null >> e2e/kvm.txt || true
+          else
+            echo "::warning::/dev/kvm absent on this runner image; emulator boots with software acceleration" | tee e2e/kvm-absent.txt
+          fi
+
+      - name: rungDefault (wgpu auto on SwiftShader)
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-default
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh default io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
+
+      - name: rungGles (WGPU_BACKEND=gles via picsh-knobs asset)
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-gles
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh gles io.github.ouaell.picsh.gles android/app/build/outputs/apk/rungGles/debug/app-rungGles-debug.apk
+
+      - name: rungCpu (PHOTOCRAFT_CPU_CANVAS=1 via picsh-knobs asset)
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-cpu
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh cpu io.github.ouaell.picsh.cpu android/app/build/outputs/apk/rungCpu/debug/app-rungCpu-debug.apk
+
+      - name: upload emulator-e2e evidence (always, red or green)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: emulator-e2e-${{ github.run_id }}
+          path: |
+            e2e-toolchainfacts.txt
+            e2e/
+            rungs/
+          if-no-files-found: error

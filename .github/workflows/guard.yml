@@ -1,0 +1,46 @@
+name: guard
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: guard (upstream pristine + skills integrity)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: checkout (with upstream submodule, read-only)
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+          clean: true
+
+      - name: guard-upstream.sh
+        run: |
+          set -o pipefail
+          bash scripts/guard-upstream.sh 2>&1 | tee guard-upstream.log
+
+      - name: skills-integrity.sh
+        run: |
+          set -o pipefail
+          bash scripts/skills-integrity.sh 2>&1 | tee skills-integrity.log
+
+      - name: upload guard logs (always, red or green)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guard-logs-${{ github.run_id }}
+          path: |
+            guard-upstream.log
+            skills-integrity.log
+          if-no-files-found: error

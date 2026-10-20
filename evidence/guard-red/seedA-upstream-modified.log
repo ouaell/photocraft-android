@@ -1,0 +1,4 @@
+GUARD: upstream working tree is not clean:
+ M README.md
+GUARD: tracked files differ from HEAD
+exit=1

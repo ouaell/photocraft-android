@@ -1,0 +1,7 @@
+# Disables ALL automatic line-ending conversion (autocrlf etc.) for this repo.
+# The byte-identical content is a requirement: guard-upstream.sh and
+# skills-integrity.sh compare working trees (submodule gitlink check is
+# byte-based; skills-integrity.sh hashes every vendored file). A CRLF
+# conversion on checkout on Windows would make the manifest paths end in CR
+# (sha256sum "FAILED open or read") and break the guard on fresh clones.
+* -text

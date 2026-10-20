@@ -1,0 +1,219 @@
+sha256sum: 'LICENSE-android-skills-Apache-2.0.txt'$'\r': No such file or directory
+LICENSE-android-skills-Apache-2.0.txt: FAILED open or read
+sha256sum: 'LICENSE-rust-skills-BSD-3-Clause.txt'$'\r': No such file or directory
+LICENSE-rust-skills-BSD-3-Clause.txt: FAILED open or read
+sha256sum: 'android-cli/SKILL.md'$'\r': No such file or directory
+android-cli/SKILL.md: FAILED open or read
+sha256sum: 'android-cli/references/interact.md'$'\r': No such file or directory
+android-cli/references/interact.md: FAILED open or read
+sha256sum: 'android-cli/references/journeys.md'$'\r': No such file or directory
+android-cli/references/journeys.md: FAILED open or read
+sha256sum: 'android-intent-security/SKILL.md'$'\r': No such file or directory
+android-intent-security/SKILL.md: FAILED open or read
+sha256sum: 'android-permissions-security/SKILL.md'$'\r': No such file or directory
+android-permissions-security/SKILL.md: FAILED open or read
+sha256sum: 'android-permissions-security/references/android/guide/topics/manifest/permission-element.md'$'\r': No such file or directory
+android-permissions-security/references/android/guide/topics/manifest/permission-element.md: FAILED open or read
+sha256sum: 'android-permissions-security/references/android/guide/topics/permissions/overview.md'$'\r': No such file or directory
+android-permissions-security/references/android/guide/topics/permissions/overview.md: FAILED open or read
+sha256sum: 'android-permissions-security/references/android/training/permissions/requesting.md'$'\r': No such file or directory
+android-permissions-security/references/android/training/permissions/requesting.md: FAILED open or read
+sha256sum: 'android-profiler/SKILL.md'$'\r': No such file or directory
+android-profiler/SKILL.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/analysis_orchestrator.md'$'\r': No such file or directory
+android-profiler/analysis/analysis_orchestrator.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-sql/perfetto_sql.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-sql/perfetto_sql.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/perfetto_trace_analysis.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/perfetto_trace_analysis.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_cpu.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_cpu.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_graphics.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_graphics.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_io.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_io.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_ipc.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_ipc.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_memory.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_memory.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_power.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/hints/hints_power.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/per_candidate_analysis.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/per_candidate_analysis.md: FAILED open or read
+sha256sum: 'android-profiler/analysis/workflows/perfetto-trace-analysis/references/triage.md'$'\r': No such file or directory
+android-profiler/analysis/workflows/perfetto-trace-analysis/references/triage.md: FAILED open or read
+sha256sum: 'android-profiler/recording/recording_orchestrator.md'$'\r': No such file or directory
+android-profiler/recording/recording_orchestrator.md: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/perfetto_trace_recording.md'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/perfetto_trace_recording.md: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/app_jank.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/app_jank.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/cpu_profile.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/cpu_profile.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/java_heap_dump.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/java_heap_dump.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/long_background.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/long_background.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/memory_counters.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/memory_counters.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/native_heap.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/native_heap.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/sched_cpu.pftxt'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/example-configs/sched_cpu.pftxt: FAILED open or read
+sha256sum: 'android-profiler/recording/workflows/perfetto-trace-recording/references/trace_config_reference.md'$'\r': No such file or directory
+android-profiler/recording/workflows/perfetto-trace-recording/references/trace_config_reference.md: FAILED open or read
+sha256sum: 'android-profiler/references/env_setup.md'$'\r': No such file or directory
+android-profiler/references/env_setup.md: FAILED open or read
+sha256sum: 'android-profiler/references/perfetto/bin/trace_processor'$'\r': No such file or directory
+android-profiler/references/perfetto/bin/trace_processor: FAILED open or read
+sha256sum: 'android-profiler/references/perfetto/setup.md'$'\r': No such file or directory
+android-profiler/references/perfetto/setup.md: FAILED open or read
+sha256sum: 'android-profiler/references/perfetto/sql.md'$'\r': No such file or directory
+android-profiler/references/perfetto/sql.md: FAILED open or read
+sha256sum: 'cargo-workflows/SKILL.md'$'\r': No such file or directory
+cargo-workflows/SKILL.md: FAILED open or read
+sha256sum: 'cargo-workflows/references/cross-compilation.md'$'\r': No such file or directory
+cargo-workflows/references/cross-compilation.md: FAILED open or read
+sha256sum: 'cargo-workflows/references/edition-migration.md'$'\r': No such file or directory
+cargo-workflows/references/edition-migration.md: FAILED open or read
+sha256sum: 'cargo-workflows/references/feature-resolution.md'$'\r': No such file or directory
+cargo-workflows/references/feature-resolution.md: FAILED open or read
+sha256sum: 'cargo-workflows/references/native-artifacts.md'$'\r': No such file or directory
+cargo-workflows/references/native-artifacts.md: FAILED open or read
+sha256sum: 'cargo-workflows/references/workspace-patterns.md'$'\r': No such file or directory
+cargo-workflows/references/workspace-patterns.md: FAILED open or read
+sha256sum: 'ffi-error-progress-cancel/SKILL.md'$'\r': No such file or directory
+ffi-error-progress-cancel/SKILL.md: FAILED open or read
+sha256sum: 'ffi-error-progress-cancel/references/error-taxonomy.md'$'\r': No such file or directory
+ffi-error-progress-cancel/references/error-taxonomy.md: FAILED open or read
+sha256sum: 'ffi-error-progress-cancel/references/mobile-lifecycle.md'$'\r': No such file or directory
+ffi-error-progress-cancel/references/mobile-lifecycle.md: FAILED open or read
+sha256sum: 'ffi-error-progress-cancel/references/platform-bridges.md'$'\r': No such file or directory
+ffi-error-progress-cancel/references/platform-bridges.md: FAILED open or read
+sha256sum: 'ffi-error-progress-cancel/references/review-checklist.md'$'\r': No such file or directory
+ffi-error-progress-cancel/references/review-checklist.md: FAILED open or read
+sha256sum: 'play-policy-insights/SKILL.md'$'\r': No such file or directory
+play-policy-insights/SKILL.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/common_mandates.md'$'\r': No such file or directory
+play-policy-insights/resources/common_mandates.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/compliance_report_template.md'$'\r': No such file or directory
+play-policy-insights/resources/compliance_report_template.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/critic.md'$'\r': No such file or directory
+play-policy-insights/resources/critic.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/goal_data_safety.md'$'\r': No such file or directory
+play-policy-insights/resources/goal_data_safety.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/goal_permissions_and_apis.md'$'\r': No such file or directory
+play-policy-insights/resources/goal_permissions_and_apis.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/goal_user_account.md'$'\r': No such file or directory
+play-policy-insights/resources/goal_user_account.md: FAILED open or read
+sha256sum: 'play-policy-insights/resources/policies.json'$'\r': No such file or directory
+play-policy-insights/resources/policies.json: FAILED open or read
+sha256sum: 'play-policy-insights/resources/scanner_config.json'$'\r': No such file or directory
+play-policy-insights/resources/scanner_config.json: FAILED open or read
+sha256sum: 'play-policy-insights/scripts/generate_report.py'$'\r': No such file or directory
+play-policy-insights/scripts/generate_report.py: FAILED open or read
+sha256sum: 'play-policy-insights/scripts/orchestrator.py'$'\r': No such file or directory
+play-policy-insights/scripts/orchestrator.py: FAILED open or read
+sha256sum: 'play-policy-insights/scripts/play_store_scraper.py'$'\r': No such file or directory
+play-policy-insights/scripts/play_store_scraper.py: FAILED open or read
+sha256sum: 'play-policy-insights/scripts/scanner.py'$'\r': No such file or directory
+play-policy-insights/scripts/scanner.py: FAILED open or read
+sha256sum: 'play-policy-insights/scripts/template_engine.py'$'\r': No such file or directory
+play-policy-insights/scripts/template_engine.py: FAILED open or read
+sha256sum: 'rust-android-build/SKILL.md'$'\r': No such file or directory
+rust-android-build/SKILL.md: FAILED open or read
+sha256sum: 'rust-android-build/references/elf-verification.md'$'\r': No such file or directory
+rust-android-build/references/elf-verification.md: FAILED open or read
+sha256sum: 'rust-android-build/references/ndk-and-gradle.md'$'\r': No such file or directory
+rust-android-build/references/ndk-and-gradle.md: FAILED open or read
+sha256sum: 'rust-android-build/references/release-packaging.md'$'\r': No such file or directory
+rust-android-build/references/release-packaging.md: FAILED open or read
+sha256sum: 'rust-debugging/SKILL.md'$'\r': No such file or directory
+rust-debugging/SKILL.md: FAILED open or read
+sha256sum: 'rust-debugging/references/android-debugging.md'$'\r': No such file or directory
+rust-debugging/references/android-debugging.md: FAILED open or read
+sha256sum: 'rust-debugging/references/ios-debugging.md'$'\r': No such file or directory
+rust-debugging/references/ios-debugging.md: FAILED open or read
+sha256sum: 'rust-debugging/references/rust-gdb-pretty-printers.md'$'\r': No such file or directory
+rust-debugging/references/rust-gdb-pretty-printers.md: FAILED open or read
+sha256sum: 'rust-jni/SKILL.md'$'\r': No such file or directory
+rust-jni/SKILL.md: FAILED open or read
+sha256sum: 'rust-jni/references/android-class-loading.md'$'\r': No such file or directory
+rust-jni/references/android-class-loading.md: FAILED open or read
+sha256sum: 'rust-jni/references/hot-path-data.md'$'\r': No such file or directory
+rust-jni/references/hot-path-data.md: FAILED open or read
+sha256sum: 'rust-jni/references/java-symbol-names.md'$'\r': No such file or directory
+rust-jni/references/java-symbol-names.md: FAILED open or read
+sha256sum: 'rust-jni/references/jni-threading-and-callbacks.md'$'\r': No such file or directory
+rust-jni/references/jni-threading-and-callbacks.md: FAILED open or read
+sha256sum: 'rust-jni/references/jni-versions.md'$'\r': No such file or directory
+rust-jni/references/jni-versions.md: FAILED open or read
+sha256sum: 'rust-jni/references/jvm-side.md'$'\r': No such file or directory
+rust-jni/references/jvm-side.md: FAILED open or read
+sha256sum: 'rust-jni/references/review-checklist.md'$'\r': No such file or directory
+rust-jni/references/review-checklist.md: FAILED open or read
+sha256sum: 'rust-jni/references/types-and-exceptions.md'$'\r': No such file or directory
+rust-jni/references/types-and-exceptions.md: FAILED open or read
+sha256sum: 'rust-jni/references/uniffi-vs-raw-jni.md'$'\r': No such file or directory
+rust-jni/references/uniffi-vs-raw-jni.md: FAILED open or read
+sha256sum: 'rust-lints/SKILL.md'$'\r': No such file or directory
+rust-lints/SKILL.md: FAILED open or read
+sha256sum: 'rust-lints/references/lint-catalog.md'$'\r': No such file or directory
+rust-lints/references/lint-catalog.md: FAILED open or read
+sha256sum: 'rust-lints/references/triage.md'$'\r': No such file or directory
+rust-lints/references/triage.md: FAILED open or read
+sha256sum: 'rust-lints/references/workspace-lints.md'$'\r': No such file or directory
+rust-lints/references/workspace-lints.md: FAILED open or read
+sha256sum: 'rust-native-linking/SKILL.md'$'\r': No such file or directory
+rust-native-linking/SKILL.md: FAILED open or read
+sha256sum: 'rust-native-linking/references/build-helpers.md'$'\r': No such file or directory
+rust-native-linking/references/build-helpers.md: FAILED open or read
+sha256sum: 'rust-native-linking/references/windows.md'$'\r': No such file or directory
+rust-native-linking/references/windows.md: FAILED open or read
+sha256sum: 'rust-observability/SKILL.md'$'\r': No such file or directory
+rust-observability/SKILL.md: FAILED open or read
+sha256sum: 'rust-observability/references/dispatcher-install.md'$'\r': No such file or directory
+rust-observability/references/dispatcher-install.md: FAILED open or read
+sha256sum: 'rust-observability/references/embedded-telemetry-surface.md'$'\r': No such file or directory
+rust-observability/references/embedded-telemetry-surface.md: FAILED open or read
+sha256sum: 'rust-observability/references/production-metrics-and-propagation.md'$'\r': No such file or directory
+rust-observability/references/production-metrics-and-propagation.md: FAILED open or read
+sha256sum: 'rust-observability/references/redaction-and-field-vocabulary.md'$'\r': No such file or directory
+rust-observability/references/redaction-and-field-vocabulary.md: FAILED open or read
+sha256sum: 'rust-panic-safety/SKILL.md'$'\r': No such file or directory
+rust-panic-safety/SKILL.md: FAILED open or read
+sha256sum: 'rust-panic-safety/references/boundary-patterns.md'$'\r': No such file or directory
+rust-panic-safety/references/boundary-patterns.md: FAILED open or read
+sha256sum: 'rust-panic-safety/references/jni-boundary.md'$'\r': No such file or directory
+rust-panic-safety/references/jni-boundary.md: FAILED open or read
+sha256sum: 'rust-panic-safety/references/panic-hook.md'$'\r': No such file or directory
+rust-panic-safety/references/panic-hook.md: FAILED open or read
+sha256sum: 'rust-panic-safety/references/unwind-state.md'$'\r': No such file or directory
+rust-panic-safety/references/unwind-state.md: FAILED open or read
+sha256sum: 'rust-panic-safety/references/unwrap-audit.md'$'\r': No such file or directory
+rust-panic-safety/references/unwrap-audit.md: FAILED open or read
+sha256sum: 'rust-security/SKILL.md'$'\r': No such file or directory
+rust-security/SKILL.md: FAILED open or read
+sha256sum: 'rust-security/references/deny-policy.md'$'\r': No such file or directory
+rust-security/references/deny-policy.md: FAILED open or read
+sha256sum: 'rust-security/references/incidents.md'$'\r': No such file or directory
+rust-security/references/incidents.md: FAILED open or read
+sha256sum: 'rust-security/references/untrusted-input.md'$'\r': No such file or directory
+rust-security/references/untrusted-input.md: FAILED open or read
+sha256sum: 'rust-unsafe/SKILL.md'$'\r': No such file or directory
+rust-unsafe/SKILL.md: FAILED open or read
+sha256sum: 'rust-unsafe/references/audit-checklist.md'$'\r': No such file or directory
+rust-unsafe/references/audit-checklist.md: FAILED open or read
+sha256sum: 'rust-unsafe/references/ffi-layout-rules.md'$'\r': No such file or directory
+rust-unsafe/references/ffi-layout-rules.md: FAILED open or read
+sha256sum: 'rust-unsafe/references/forbid-unsafe-code.md'$'\r': No such file or directory
+rust-unsafe/references/forbid-unsafe-code.md: FAILED open or read
+sha256sum: 'rust-unsafe/references/miri-and-aliasing.md'$'\r': No such file or directory
+rust-unsafe/references/miri-and-aliasing.md: FAILED open or read
+sha256sum: 'rust-unsafe/references/unsafe-patterns.md'$'\r': No such file or directory
+rust-unsafe/references/unsafe-patterns.md: FAILED open or read
+sha256sum: 'rust-unsafe/references/validity-and-provenance.md'$'\r': No such file or directory
+rust-unsafe/references/validity-and-provenance.md: FAILED open or read
+sha256sum: WARNING: 108 listed files could not be read
+SKILLS: a vendored file changed or is missing
+exit=1

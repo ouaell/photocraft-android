@@ -58,15 +58,20 @@ jobs:
           persist-credentials: false
           clean: true
 
-      - name: "seed lock (bootstrap: android/Cargo.lock not committed yet)"
+      - id: lockseed
         if: ${{ ! hashFiles('android/Cargo.lock') }}
+        name: "seed lock (bootstrap: android/Cargo.lock not committed yet)"
         run: |
           rustc --version && cargo --version
           UP="${UPSTREAM_DIR:-upstream}"
           cp "$UP/Cargo.lock" android/Cargo.lock
-          cargo tree -e normal --manifest-path android/Cargo.toml > "$RUNNER_TEMP/cargo-tree.txt" 2>&1
-          cargo tree -e normal --manifest-path android/Cargo.toml > /dev/null 2>&1 || { cat "$RUNNER_TEMP/cargo-tree.txt"; exit 1; }
-          cp android/Cargo.lock "$RUNNER_TEMP/generated-Cargo.lock"
+          if cargo tree -e normal --manifest-path android/Cargo.toml > "$RUNNER_TEMP/cargo-tree.txt" 2>&1; then
+            cp android/Cargo.lock "$RUNNER_TEMP/generated-Cargo.lock"
+            echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+          else
+            cat "$RUNNER_TEMP/cargo-tree.txt"
+            exit 1
+          fi
 
       - name: run parity checks
         run: |
@@ -78,7 +83,7 @@ jobs:
           exit "$rc"
 
       - name: upload generated lock (bootstrap artifact)
-        if: ${{ ! hashFiles('android/Cargo.lock') && always() }}
+        if: steps.lockseed.outputs.bootstrap == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: generated-cargo-lock-${{ github.run_id }}
@@ -90,5 +95,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: parity-logs-${{ github.run_id }}
-          path: no-web-guard.log scope-guard.log lock-parity.log profile-parity.log craft-fonts-pin.log check-16kb.log
+          path: |
+            no-web-guard.log
+            scope-guard.log
+            lock-parity.log
+            profile-parity.log
+            craft-fonts-pin.log
+            check-16kb.log
           if-no-files-found: error

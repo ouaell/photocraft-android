@@ -1,0 +1,4 @@
+rust-jni/SKILL.md: FAILED
+sha256sum: WARNING: 1 computed checksum did NOT match
+SKILLS: a vendored file changed or is missing
+exit=1

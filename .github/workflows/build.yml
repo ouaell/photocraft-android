@@ -103,8 +103,8 @@ jobs:
           set -o pipefail
           BT="$(ls -d "$ANDROID_HOME/build-tools/"* | sort | tail -1)/zipalign"
           for apk in android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/release/app-release-unsigned.apk; do
-            echo "zipalign -c -P 16 $apk" | tee -a zipalign.txt
-            "$BT" -c -P 16 "$apk" | tee -a zipalign.txt
+            echo "zipalign -c -P 16 4 $apk" | tee -a zipalign.txt
+            "$BT" -c -P 16 4 "$apk" | tee -a zipalign.txt
           done
           cat zipalign.txt
 

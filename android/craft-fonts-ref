@@ -1,0 +1,3 @@
+# craft-fonts source commit this build must embed (BR-2: CRAFT_FONTS_DIR points here at
+# CRAFT_FONTS_REQUIRED=1; scripts/craft-fonts-pin.sh compares it with upstream's release.yml).
+abb83316d96aa59c1cf64784289e378fe9fa5695

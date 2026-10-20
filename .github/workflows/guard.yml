@@ -44,3 +44,48 @@ jobs:
             guard-upstream.log
             skills-integrity.log
           if-no-files-found: error
+
+  parity:
+    name: parity (no-web, scope, lock, profile, fonts, 16kb)
+    needs: guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: checkout (with upstream submodule, read-only)
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+          clean: true
+
+      - name: seed lock (bootstrap only: while android/Cargo.lock is not committed)
+        if: ${{ ! hashFiles('android/Cargo.lock') }}
+        run: |
+          rustc --version && cargo --version
+          CARGO_TARGET_DIR="$RUNNER_TEMP/target" cargo generate-lockfile --manifest-path android/Cargo.toml
+          cp android/Cargo.lock "$RUNNER_TEMP/generated-Cargo.lock"
+
+      - name: run parity checks
+        run: |
+          set -o pipefail
+          rc=0
+          for s in no-web-guard scope-guard lock-parity profile-parity craft-fonts-pin check-16kb; do
+            bash "scripts/$s.sh" 2>&1 | tee "$s.log" || rc=1
+          done
+          exit "$rc"
+
+      - name: upload generated lock (bootstrap artifact)
+        if: ${{ ! hashFiles('android/Cargo.lock') && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-cargo-lock-${{ github.run_id }}
+          path: ${{ runner.temp }}/generated-Cargo.lock
+          if-no-files-found: error
+
+      - name: upload parity logs (always, red or green)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-logs-${{ github.run_id }}
+          path: no-web-guard.log scope-guard.log lock-parity.log profile-parity.log craft-fonts-pin.log check-16kb.log
+          if-no-files-found: error

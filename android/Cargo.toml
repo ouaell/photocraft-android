@@ -1,0 +1,39 @@
+# Picsh shell — SEPARATE Cargo workspace consuming the pinned upstream crates by path
+# (PLAN §3; AGENTS R1/R18). Profiles are NOT inherited across workspaces, so
+# [profile.release] below repeats upstream's exactly (BR-3).
+
+[workspace]
+# single-package workspace: the shell only; no other member may be added (R18)
+
+[package]
+name = "picsh"
+version = "0.8.2"                                   # = upstream's version at the pin (BR-6)
+edition = "2024"
+license = "LicenseRef-PolyForm-Noncommercial"
+description = "Picsh: PhotoCraft on Android - platform shell only, no app logic"
+
+[lib]
+crate-type = ["cdylib"]
+
+# Unsafe is allowed ONLY in src/jni_bridge.rs / src/ime.rs with an invariant comment (BR-5),
+# so upstream's `unsafe_code = "forbid"` floor is intentionally NOT copied here.
+[dependencies]
+photocraft-engine = { path = "../upstream/crates/engine" }
+photocraft-codecs = { path = "../upstream/crates/codecs", features = ["heif"] }  # BR-1
+photocraft-ui-egui = { path = "../upstream/crates/ui-egui" }
+eframe = { version = "0.36", default-features = false, features = [
+    "android-game-activity",
+    "wgpu",
+    "accesskit",
+    "persistence",
+] }
+egui = { version = "0.36", default-features = false }
+log = "0.4"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

@@ -1,0 +1,10 @@
+# 16 KB page alignment (C13: ELF align 2**14) for both Android targets.
+# NDK r28 defaults to 16 KB pages; the explicit flag makes the requirement textually
+# visible and stays correct across NDK upgrades. [patch]/[replace] are forbidden here
+# and checked on every push (scripts/guard-upstream.sh).
+
+[target.aarch64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]
+
+[target.x86_64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384"]

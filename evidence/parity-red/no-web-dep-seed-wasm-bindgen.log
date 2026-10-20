@@ -1,0 +1,5 @@
+name: no-web-dep-seed-wasm-bindgen
+script: scripts/no-web-guard.sh
+expected: exit 1 (deliberately seeded defect, scratch clone)
+NO-WEB: android/Cargo.toml references web/wasm tooling: wasm-bindgen 
+NO-WEB: cargo not on PATH: graph check skipped here (runs in CI)

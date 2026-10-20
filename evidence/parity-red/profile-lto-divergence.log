@@ -1,0 +1,8 @@
+name: profile-lto-divergence
+script: scripts/profile-parity.sh
+expected: exit 1 (deliberately seeded defect, scratch clone)
+PROFILE: profile.release differs from upstream:
+2c2
+< lto = "thin"
+---
+> lto = "fat"

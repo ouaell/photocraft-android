@@ -1,0 +1,4 @@
+name: fonts-pin-ref-drift
+script: scripts/craft-fonts-pin.sh
+expected: exit 1 (deliberately seeded defect, scratch clone)
+FONTS: pin mismatch: upstream release.yml says abb83316d96aa59c1cf64784289e378fe9fa5695, we recorded deadbeefdeadbeefdeadbeefdeadbeefdeadbeef - update both together (BR-2)

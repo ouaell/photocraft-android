@@ -1,0 +1,5 @@
+name: 16kb-flags-missing
+script: scripts/check-16kb.sh
+expected: exit 1 (deliberately seeded defect, scratch clone)
+16KB: android/.cargo/config.toml: [target.x86_64-linux-android] has no -C link-arg=-Wl,-z,max-page-size=16384
+16KB: NOTE: zipalign -P 16 and 16 KB system-image checks extend this gate when gradle/packaging land

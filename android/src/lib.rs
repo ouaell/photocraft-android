@@ -97,7 +97,7 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
             }
             fallback = app.perf.gpu_info.fallback.clone();
             let fallback_reason = std::env::var("PHOTOCRAFT_GPU_STARTUP_FAILURE").ok().or_else(|| {
-                (app.perf.gpu_info.canvas == "cpu" && mode != photocraft_engine::prefs::RenderingMode::Cpu).then_some(fallback)
+                (app.perf.gpu_info.canvas == "cpu" && mode != photocraft_engine::prefs::RenderingMode::Cpu).then_some(fallback).flatten()
             });
             if let Some(reason) = fallback_reason {
                 photocraft_ui_egui::gpu_status::queue_fallback_notice(&mut app, &reason);

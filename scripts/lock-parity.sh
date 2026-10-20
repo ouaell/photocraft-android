@@ -6,8 +6,12 @@
 # so comparison is set membership on (name, source, version). Brand-new crate names
 # only the shell uses are allowed; entries pruned because upstream's dev/extra
 # dependencies are not ours are fine (informational). [patch]/[replace] forbidden.
-# The committed lock is required; seed it with `cargo generate-lockfile` in android/
-# (upstream's versions stay pinned) and COMMIT it before any --locked build.
+# Known non-issue (do not flag R18 here): the lock records wasm32-CFG-GATED entries
+# (wasm-bindgen, web-sys, js-sys, ...) of eframe/winit/wgpu that exist in BOTH locks at
+# identical versions; they never enter an Android build. The operative gates for R18
+# are no-web-guard (cargo tree --target aarch64-linux-android) and scope-guard.
+# The committed lock is required; CI's parity job generates it from upstream's lock,
+# `cargo tree` pins it and uploads the artifact to be committed verbatim (M1-3b).
 set -u
 UP="${UPSTREAM_DIR:-upstream}/Cargo.lock"
 AN="android/Cargo.lock"

@@ -1,0 +1,5 @@
+name: scope-dep-seed-qualified-section
+script: scripts/scope-guard.sh
+expected: exit != 0 (deliberately seeded defect, scratch clone)
+observed rc: 1
+SCOPE: android/Cargo.toml: qualified dependency section '[dependencies.rfd]' bypasses the allowlist; use plain [dependencies]

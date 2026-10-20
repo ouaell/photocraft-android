@@ -43,7 +43,12 @@ while IFS= read -r f; do
     esac
   done < <(parse_deps "$f" | tr -d '\r')
 
-  # every photocraft- dep must declare exactly ../../cupstream twin path
+  # qualified dependency sections are outside the parsed allowlist (R-A finding 1)
+  while IFS= read -r q; do
+    say "$f: qualified dependency section '$q' bypasses the allowlist; use plain [dependencies]"; fail=1
+  done < <(tr -d '\r' < "$f" | grep -E '^\[(dev-|build-)?dependencies\.[A-Za-z0-9_-]+\]')
+
+  # every photocraft- dep must declare exactly ../upstream twin path
   while IFS= read -r d; do
     crate="$(printf '%s' "$d" | sed 's/^photocraft-//;s/ = .*$//')"
     exp="path = \"../upstream/crates/$crate\""

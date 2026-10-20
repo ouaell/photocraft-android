@@ -26,5 +26,6 @@ if ! diff <(printf '%s\n' "$U") <(printf '%s\n' "$A") > /dev/null 2>&1; then fai
 diffsum="$(diff <(printf '%s\n' "$U") <(printf '%s\n' "$A") | head -20)"
 if [ -n "$diffsum" ]; then say "profile.release differs from upstream:"; printf '%s\n' "$diffsum" >&2; fail=1; fi
 if printf '%s\n' "$A" | grep -Eq '^[[:space:]]*panic[[:space:]]*='; then say "profile.release sets 'panic' (crash guard needs unwinding)"; fail=1; fi
+if tr -d '\r' < "$AN" | grep -Eq '^\[profile\.[A-Za-z0-9_.-]+\.package'; then say "per-package profile overrides ([profile.*.package]) are outside the mirrored block"; fail=1; fi
 [ "$fail" -eq 0 ] && say "OK: profile.release matches upstream at the pin"
 exit "$fail"

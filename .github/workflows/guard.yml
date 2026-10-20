@@ -65,7 +65,7 @@ jobs:
           rustc --version && cargo --version
           UP="${UPSTREAM_DIR:-upstream}"
           cp "$UP/Cargo.lock" android/Cargo.lock
-          if cargo tree -e normal --manifest-path android/Cargo.toml > "$RUNNER_TEMP/cargo-tree.txt" 2>&1; then
+          if cargo tree -e normal --target aarch64-linux-android --manifest-path android/Cargo.toml > "$RUNNER_TEMP/cargo-tree.txt" 2>&1; then
             cp android/Cargo.lock "$RUNNER_TEMP/generated-Cargo.lock"
             echo "bootstrap=true" >> "$GITHUB_OUTPUT"
           else

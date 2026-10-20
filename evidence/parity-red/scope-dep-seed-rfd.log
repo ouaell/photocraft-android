@@ -1,4 +1,5 @@
 name: scope-dep-seed-rfd
 script: scripts/scope-guard.sh
-expected: exit 1 (deliberately seeded defect, scratch clone)
+expected: exit != 0 (deliberately seeded defect, scratch clone)
+observed rc: 1
 SCOPE: android/Cargo.toml: external dep 'rfd' not on the shell allowlist (dependencies)

@@ -14,11 +14,14 @@ CFG="android/.cargo/config.toml"
 for target in target.aarch64-linux-android target.x86_64-linux-android; do
   if ! sed 's/\r$//' "$CFG" | awk -v t="[$target]" '
     $0 == t          { insec = 1; next }
-    /^\[/            { insec = 0 }
-    insec && /max-page-size=16384/ { found = 1 }
+    /^\[/            { insec = 0; in_r = 0 }
+    insec && /^#/    { next }
+    insec && /^rustflags(\.[a-z]+)?[[:space:]]*=/ { in_r = 1 }
+    insec && /^]/    { in_r = 0 }
+    insec && in_r && /max-page-size=16384/ { found = 1 }
     END { exit !found }
   '; then
-    say "$CFG: [$target] has no -C link-arg=-Wl,-z,max-page-size=16384"; fail=1
+    say "$CFG: [$target] has no -C link-arg=-Wl,-z,max-page-size=16384 in a rustflags assignment"; fail=1
   fi
 done
 

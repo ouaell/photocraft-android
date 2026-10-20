@@ -36,7 +36,7 @@ if command -v cargo >/dev/null 2>&1; then
   if [ ! -f android/Cargo.lock ]; then
     say "android/Cargo.lock missing: commit the seeded lock (cargo generate-lockfile in android/)"; fail=1
   else
-    tree="$(cargo tree --locked -e normal --manifest-path android/Cargo.toml 2>&1)"
+    tree="$(cargo tree --locked -e normal --target aarch64-linux-android --manifest-path android/Cargo.toml 2>&1)"
     if [ $? -ne 0 ]; then
       say "cargo tree --locked failed - lock is not exactly what the manifests want:"; printf '%s\n' "$tree" | head -12 >&2; fail=1
     else

@@ -68,6 +68,12 @@ BR-1..7 · SU-1..14 · RB-1..20 · SV-1..10 · PB-1..11 · AO-1..7 · PK-1..6 ·
 - **LIMITATION (noted, R12):** CI green here proves manifest/lock consistency only — no Android compile exists yet; first compile of the entry code happens in M1-6 `build.yml` (`cargo ndk build`). Known risk: type errors (e.g. egui/eframe specifics) surface there; fix-loop budget per AGENTS.
 - PENDING: reviewer R-A on M1-4b diff; M1-5 gradle module.
 
+### M1-5 Gradle module (template shape at CI pins; build runs at M1-6)
+- **Spec (step 1):** grade the shell so `cargo ndk`'s `libpicsh.so` can ship in a GameActivity APK: `android/` becomes the Gradle root (`settings.gradle`, `build.gradle` AGP 9.0.1 per decision 003, `gradle.properties`), `android/app/` module (compileSdk/targetSdk 35, minSdk 31=template, Java 17, games-activity 4.4.0 no prefab, appcompat 1.7.0), manifest with DIRECT `com.google.androidgamesdk.GameActivity` activity + `android.app.lib_name=picsh`, no Java/Kotlin source in M1, no wrapper jar (M1-6 uses `gradle/actions/setup-gradle@v4` gradle-version 9.1.0, decision 007). Files: `android/{settings,build,*}.gradle`, `android/gradle.properties`, `android/app/**`, `docs/decisions/007`, `STATE.md`.
+- **Template verification (R5):** rust-mobile/rust-android-examples `agdk-eframe/` read from GitHub 2026-10-20: games-activity 4.4.0 without prefab, compileSdk 35/minSdk 31/Java 17, `lib_name` meta-data, configChanges list — copied into our files; our AGP/Gradle lines stay at the decision-003 pins (documented divergence).
+- **LIMITATION (noted, R12):** Gradle files are not exercised by any run until M1-6's `build.yml` (no local Gradle); the discovery-fix loop starts there.
+- PENDING: reviewer R-A on M1-5 diff; M1-6 build workflow (`cargo ndk` + jniLibs + gradle build + zipalign -P 16 gate extension).
+
 ## Notes (2026-10-20, agent)
 - Reading round complete: AGENTS.md, PLAN.md (v3.2), PORT-SPEC.md, STATE.md, SETUP run.
   `setup.sh` OK: `GUARD: OK` / `SKILLS: OK`; commit `d572cd1` "Import plan bundle and pin upstream" (local, not pushed yet).

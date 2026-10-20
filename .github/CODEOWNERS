@@ -1,5 +1,6 @@
 # Escalated paths: agent edits need a human-approved PR (START-HERE.md step 4; PLAN 5.1)
 /.github/workflows/  @ouaell
+/.github/scripts/     @ouaell
 /scripts/             @ouaell
 /AGENTS.md            @ouaell
 /PLAN.md              @ouaell

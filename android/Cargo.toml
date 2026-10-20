@@ -30,8 +30,9 @@ eframe = { version = "0.36", default-features = false, features = [
 egui = { version = "0.36", default-features = false }
 log = "0.4"
 # logcat sink for the log facade (PORT-SPEC SU-1, shell-only; vetting in
-# docs/decisions/005-android-logger-and-winit.md)
-android_logger = "0.15.1"
+# docs/decisions/005-android-logger-and-winit.md). default = ["regex"] is
+# disabled: regex filter matching is not used by the shell
+android_logger = { version = "0.15.1", default-features = false }
 # direct dep only to name winit's android activity type in the entry point
 # (eframe does not re-export winit); resolution stays on the locked 0.30.13
 winit = { version = "0.30.13", default-features = false }

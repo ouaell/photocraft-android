@@ -23,7 +23,7 @@ use log::LevelFilter;
 /// idempotent there.
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     // Panic must never unwind into Java frames (eframe-android-shell skill).
-    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(run(app)));
+    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(app)));
     if outcome.is_err() {
         log::error!("Picsh: android_main panicked; the activity ends without an abort");
     }
@@ -67,14 +67,12 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
             // PHOTOCRAFT_INLINE_JOBS stays available for CI debugging like on the desktop.
             app.background_jobs = std::env::var_os("PHOTOCRAFT_INLINE_JOBS").is_none();
             // Desktop main.rs's GPU status block, M1 form (auto preference, no marker logic).
-            let info = &mut app.perf.gpu_info;
-            info.preference = "auto".to_string();
-            info.selected = match &env_backend {
-                Some(_) => "env".to_string(),
-                None => "auto".to_string(),
-            };
-            info.fallback = plan_reason.clone();
-            info.canvas = "cpu".to_string();
+            let selected = if env_backend.is_some() { "env".to_string() } else { "auto".to_string() };
+            let mut fallback = plan_reason;
+            app.perf.gpu_info.preference = "auto".to_string();
+            app.perf.gpu_info.selected = selected;
+            app.perf.gpu_info.fallback = fallback.clone();
+            app.perf.gpu_info.canvas = "cpu".to_string();
             let mode = app.session.prefs().performance.effective_rendering_mode();
             if let Some(rs) = cc.wgpu_render_state.clone() {
                 app.perf.gpu_info.set_adapter(&rs.adapter.get_info());
@@ -85,7 +83,7 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                 );
                 let software_window = got.device_type == eframe::wgpu::DeviceType::Cpu;
                 if software_window && mode != photocraft_engine::prefs::RenderingMode::Cpu {
-                    info.fallback = Some("No compatible hardware graphics adapter; using software graphics.".to_string());
+                    app.perf.gpu_info.fallback = Some("No compatible hardware graphics adapter; using software graphics.".to_string());
                 }
                 if !software_window
                     && std::env::var_os("PHOTOCRAFT_CPU_CANVAS").is_none()
@@ -97,8 +95,9 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                     let _ = photocraft_ui_egui::gpu_canvas::DeviceHealth::watch(&rs.device);
                 }
             }
+            fallback = app.perf.gpu_info.fallback.clone();
             let fallback_reason = std::env::var("PHOTOCRAFT_GPU_STARTUP_FAILURE").ok().or_else(|| {
-                (info.canvas == "cpu" && mode != photocraft_engine::prefs::RenderingMode::Cpu).then(|| info.fallback.clone()).flatten()
+                (app.perf.gpu_info.canvas == "cpu" && mode != photocraft_engine::prefs::RenderingMode::Cpu).then_some(fallback)
             });
             if let Some(reason) = fallback_reason {
                 photocraft_ui_egui::gpu_status::queue_fallback_notice(&mut app, &reason);

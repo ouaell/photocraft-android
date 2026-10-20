@@ -1,0 +1,8 @@
+# seeded defect (scratch clone, upstream pinned d43db3e1): case v
+# command: UPSTREAM_DIR=upstream bash scripts/lock-parity.sh
+# expected: exit != 0 with the tamper detected
+# rc=1
+
+ADDS: 1 (informational: new shell-only names)
+LOCK: violations:
+NEWVER: polycool (registry+https://github.com/rust-lang/crates.io-index) v0.4.1 is not any version upstream pins

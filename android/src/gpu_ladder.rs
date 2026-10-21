@@ -192,7 +192,9 @@ fn round_trip_ops(device: &eframe::wgpu::Device, queue: &eframe::wgpu::Queue) ->
     });
     {
         let mut view = source.get_mapped_range_mut(0..SIZE).map_err(|e| format!("mapped write: {e}"))?;
-        (&mut *view).copy_from_slice(&bytes);
+        // BufferViewMut has no Deref in wgpu 30 (write-only type by design);
+        // its own copy_from_slice is the documented write access.
+        view.copy_from_slice(&bytes);
     }
     source.unmap();
     let target = device.create_buffer(&eframe::wgpu::BufferDescriptor {
@@ -309,7 +311,8 @@ impl Marker {
         }
         let mut text = String::new();
         let _ = file.read_to_string(&mut text);
-        let stale = text.trim().is_empty().not().then(|| text.trim().to_string());
+        let trimmed = text.trim();
+        let stale = (!trimmed.is_empty()).then(|| trimmed.to_string());
         (stale, Marker { file: Some(file), path: Some(path) })
     }
 

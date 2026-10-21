@@ -143,8 +143,17 @@ else
             red_exit scenario "scenario.red" "pid 1 did not exit within 90s of Back (evidence: logcat-onred-*.txt, activities-onred.txt, screenshot-red.png)"
         fi
         adb logcat -d --pid="$PID1" -v time > "$OUT/logcat-boot1.txt" 2>/dev/null || true
-        grep -aq "Picsh: eframe loop returned cleanly" "$OUT/logcat-boot1.txt" || {
-            red_exit scenario "scenario.red" "no clean-exit line in the pid-1 logcat"
+        # The Back key asks the app to close (the shell's wrapper), upstream's
+        # leave guard runs, and the app leaves through the platform quit
+        # (`Services::quit` -> the shell's leave hook). On Android the eframe
+        # run itself cannot return (winit's Android event loop never exits on
+        # its own), so the leave evidence is the shell's own line, not
+        # "efrace loop returned cleanly".
+        grep -aq "Picsh: leaving: the app quits" "$OUT/logcat-boot1.txt" || {
+            red_exit scenario "scenario.red" "no leave line in the pid-1 logcat"
+        }
+        grep -aq "Picsh: Rust panic" "$OUT/logcat-boot1.txt" && {
+            red_exit scenario "scenario.red" "the app panicked while leaving"
         }
         echo "scenario boot 1: Back pressed, pid $PID1 exited cleanly" | tee "$OUT/scenario-boot1.txt"
     fi

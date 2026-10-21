@@ -42,6 +42,51 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
     std::process::exit(0);
 }
 
+/// The shell's app wrapper: it adds the Android Back key to the upstream app
+/// and changes nothing else.
+///
+/// Android delivers Back as a key event (`KEYCODE_BACK` -> winit's
+/// `NamedKey::BrowserBack` -> egui's `Key::BrowserBack`; the AGDK's
+/// GameActivity hands the key to the game instead of letting the framework
+/// finish the activity, so nothing ends the run on its own - decision 011
+/// amendment 5). The app-level meaning of "the user asked to leave" is the
+/// same as on the desktop, where closing the window asks the root viewport to
+/// close (`egui::ViewportCommand::Close`). Upstream's close guard
+/// (`discard_ui::guard_window_close`) then decides what leaving means: unsaved
+/// work gets the prompt, and once leaving is settled the platform quit in
+/// `Services::quit` ends the app (the shell's quit hook ends the process,
+/// because on Android a closed eframe window does not end the app: winit's
+/// Android backend never exits its event loop on its own).
+struct PlatformApp {
+    inner: photocraft_ui_egui::PhotocraftApp,
+    /// Whether a Back press may still ask the app to close (cleared while the
+    /// key is held, so a key repeat cannot ask twice in a row).
+    back_armed: bool,
+}
+
+impl eframe::App for PlatformApp {
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let held = ctx.input(|i| i.key_down(egui::Key::BrowserBack));
+        if !held {
+            self.back_armed = true;
+        }
+        if self.back_armed && ctx.input(|i| i.key_pressed(egui::Key::BrowserBack)) {
+            self.back_armed = false;
+            log::info!("Picsh: Back key pressed; asking the app to close");
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+        eframe::App::logic(&mut self.inner, ctx, frame);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        eframe::App::ui(&mut self.inner, ui, frame);
+    }
+
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        eframe::App::raw_input_hook(&mut self.inner, ctx, raw_input);
+    }
+}
+
 #[cfg(target_os = "android")]
 fn run(app: winit::platform::android::activity::AndroidApp) {
     // Knobs may include RUST_LOG, so they land before the logger binds its filter.
@@ -170,7 +215,7 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                 log::info!("Picsh: SystemInfo: {line}");
             }
             maybe_test_crash(&dirs.config);
-            Ok(Box::new(app))
+            Ok(Box::new(PlatformApp { inner: app, back_armed: true }))
         }),
     );
     match result {

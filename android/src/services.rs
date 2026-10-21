@@ -154,6 +154,17 @@ pub fn native(dirs: &Dirs) -> Services {
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(path).map_err(|e| e.to_string())?;
             f.write_all(text.as_bytes()).map_err(|e| e.to_string())
         })),
+        // The platform's own way of leaving the app (upstream's `Services::quit`,
+        // decision 011 amendment 5). Upstream calls it only once its leave guard
+        // settled: nothing unsaved, or the unsaved-changes prompt answered. On
+        // Android the app IS the process, and winit's Android event loop never
+        // exits on its own (its `MainEvent::Destroy` is a TODO in winit 0.30.13),
+        // so leaving ends the process here - the same way the shell's
+        // `android_main` ends it once the eframe run returns.
+        quit: Some(Box::new(|| {
+            log::info!("Picsh: leaving: the app quits; the process ends");
+            std::process::exit(0);
+        })),
         // Files must be opened and saved through a picker (Storage Access Framework) or
         // the share sheet; dialogs, clipboard and URL opening reach Android in M5.
         ..Default::default()

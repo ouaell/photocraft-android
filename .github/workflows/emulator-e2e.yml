@@ -107,15 +107,27 @@ jobs:
             echo "baseline green: pure log passes" | tee e2e/redproof/baseline.green
           fi
 
-      - name: KVM proof (log presence for the rung boots; never silently hide acceleration state)
+      - name: KVM probe (log presence for the rung boots; never silently hide acceleration state)
         run: |
           set -o pipefail
           mkdir -p e2e
           if [ -e /dev/kvm ]; then
             ls -l /dev/kvm | tee e2e/kvm.txt
-            grep -c '^0' /sys/module/kvm_intel/parameters/nested 2>/dev/null >> e2e/kvm.txt || true
           else
             echo "::warning::/dev/kvm absent on this runner image; emulator boots with software acceleration" | tee e2e/kvm-absent.txt
+          fi
+
+      - name: enable KVM for the current user (udev rule; verified pattern from dotnet/maui enable-kvm.yml)
+        run: |
+          set -o pipefail
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            ls -l /dev/kvm | tee e2e/kvm-enabled.txt
+            test -r /dev/kvm
+          else
+            echo "skipped: no /dev/kvm on this image" | tee e2e/kvm-enabled.txt
           fi
 
       - name: rungDefault (wgpu auto on SwiftShader)

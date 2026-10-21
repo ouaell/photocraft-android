@@ -1,2 +1,0 @@
-# Emulator rung forced CPU canvas (decision 009).
-PHOTOCRAFT_CPU_CANVAS=1

@@ -1,0 +1,4 @@
+# Emulator rung forced CPU canvas (decision 009).
+# Debug-only source set (<flavor><buildType>): a release variant of this flavor
+# never bundles knobs (audit step in build.yml proves absence).
+PHOTOCRAFT_CPU_CANVAS=1

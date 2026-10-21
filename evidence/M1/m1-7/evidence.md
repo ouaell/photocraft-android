@@ -72,6 +72,22 @@ pattern (seeded above) matched nothing, result.json green.
 - U-G (accesskit-on-GameActivity): NO accesskit panic, no `FATAL`, no
   validation errors across all three boots — first real-crash evidence pass.
 
+## Correction (2026-10-21, M1-8)
+
+The dialog sentence above ("expected on the emulator…") is confirmed
+*pinned-source-correct* but was under-cited: upstream itself raises the
+fallback notice when the only presentable adapter has `device_type Cpu`
+(`apps/photocraft/src/main.rs:415-418` + `430-437` at pin d43db3e1) — not
+merely from the set_wgpu panic / gpu fault / planner paths. Separately, a
+real defect this review found in the shell was fixed in the same step
+(M1-8 / decision 011): the device was requested with egui's default
+descriptor (8192 px texture cap, egui-wgpu 0.36.2 `setup.rs:260-277`)
+instead of the desktop `gpu_canvas::device_limits(adapter)` path
+(`gpu_startup.rs:323`, SU-9) — now mirrored via `use_adapter_limits`,
+with per-rung `Picsh: device request:` + `Picsh: SystemInfo:` log lines
+as evidence. New matrix (api 34 ×3 rungs + api 31/36 default) recorded in
+`evidence/M1/m1-8/`.
+
 ## Fix loop history (R7 records)
 
 1. Run 39503833071 RED — `FATAL EXCEPTION: main`, root cause verified from

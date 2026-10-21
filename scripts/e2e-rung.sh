@@ -33,6 +33,8 @@ sleep 5
 adb exec-out screencap -p > "$OUT/screenshot-2.png"
 sleep 5
 adb exec-out screencap -p > "$OUT/screenshot-3.png"
+# 16 KB page-size evidence from THIS emulator (decision 011: claim-scope honesty).
+adb shell getconf PAGE_SIZE > "$OUT/pagesize.txt" 2>&1 || true
 ls -l "$OUT" | tee "$OUT/files.txt"
 
 adb logcat -d -t 200000 > "$OUT/logcat-full.txt"
@@ -54,6 +56,25 @@ if grep -qE "$fatal" "$ORACLE_LOG"; then
     sleep 5
     exit 1
 fi
+
+# Decision 011 parity fields: every rung must surface the Help > System Info content
+# (Image compositor / Fallback / ...) and the device-limits record (SU-9/F26) logged by
+# the shell. Missing either is a red result, not a prose claim.
+PARITY=""
+grep -aq "Picsh: SystemInfo: Image compositor: " "$ORACLE_LOG" || PARITY="systeminfo"
+grep -aq "Picsh: device request: " "$ORACLE_LOG" || PARITY="${PARITY:+$PARITY }device-request"
+if [ -n "$PARITY" ]; then
+    echo "PARITY RED: missing in $ORACLE_LOG: $PARITY" | tee "$OUT/parity.red"
+    printf '{"rung":"%s","package":"%s","pid":"%s","oracle":"red","parity":"%s"}\n' "$RUNG" "$PKG" "$PID" "$PARITY" > "$OUT/result.json"
+    adb shell am force-stop "$PKG" 2>/dev/null || true
+    adb uninstall "$PKG" >/dev/null 2>&1 || true
+    adb emu kill >/dev/null 2>&1 || true
+    sleep 5
+    exit 1
+fi
+echo "parity green: SystemInfo + device request captured" | tee "$OUT/parity.green"
+grep -a "Picsh: SystemInfo: " "$ORACLE_LOG" > "$OUT/system-info.txt" || true
+grep -a "Picsh: device request: " "$ORACLE_LOG" > "$OUT/device-request.txt" || true
 
 echo "ORACLE GREEN on $ORACLE_LOG" | tee "$OUT/oracle.green"
 printf '{"rung":"%s","package":"%s","pid":"%s","oracle":"green"}\n' "$RUNG" "$PKG" "$PID" > "$OUT/result.json"

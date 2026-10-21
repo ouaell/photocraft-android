@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   emulator-e2e:
-    name: emulator-e2e (boot + 3 rendering rungs + logcat oracle)
+    name: 'emulator-e2e (api 34: 3 rendering rungs; api 31 + api 36: default rung; logcat oracle)'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -159,6 +159,26 @@ jobs:
           avd-name: m1-rung-cpu
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: bash scripts/e2e-rung.sh cpu io.github.ouaell.picsh.cpu android/app/build/outputs/apk/rungCpu/debug/app-rungCpu-debug.apk
+
+      - name: 'rungDefault at api 31 (user decision: CI API levels 31/34/36)'
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-default-api31
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh default-api31 io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
+
+      - name: 'rungDefault at api 36 (user decision: CI API levels 31/34/36)'
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-default-api36
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh default-api36 io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
 
       - name: upload emulator-e2e evidence (always, red or green)
         if: always()

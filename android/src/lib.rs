@@ -50,6 +50,9 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
         dirs.files.display(),
         dirs.cache.display()
     );
+    // PB-9 evidence: TMPDIR is set to cacheDir in bootstrap_env; log the value std
+    // actually resolves so the [U] premise is proven from the device, not from prose.
+    log::info!("Picsh: temp_dir={}", std::env::temp_dir().display());
 
     // Rendering plan, M1 form of desktop `gpu_startup::plan`: honor `WGPU_BACKEND`
     // env passthrough (wgpu selects the backend from it when the instance is built),
@@ -59,11 +62,19 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
 
     // eframe 0.36.2 epi.rs: android_app is "required on Android to correctly create
     // the event loop" (decision 010). AndroidApp is Clone (android-activity 0.6.1).
-    let options = eframe::NativeOptions {
+    let mut options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
         android_app: Some(app.clone()),
         ..Default::default()
     };
+    // SU-9/F26 parity with gpu_startup.rs::configure: eframe's default device
+    // descriptor caps max_texture_dimension_2d at egui's 8192 px (egui-wgpu 0.36.2
+    // setup.rs:260-277); the desktop app instead asks the upstream public helper for
+    // the adapter's own texture and buffer limits (apps/photocraft/src/gpu_startup.rs:323
+    // -> crates/ui-egui/src/gpu_canvas.rs:801-815). Same helper, no copy. Desktop-only
+    // pieces of configure (Windows Intel DX12 default, Mac indirect-validation skip,
+    // marker-on-adapter hook) have no Android counterpart at M1 (decision 011).
+    photocraft_ui_egui::gpu_canvas::use_adapter_limits(&mut options.wgpu_options.wgpu_setup);
     log::info!("Picsh: run_native starts (WGPU_BACKEND={:?}, PHOTOCRAFT_CPU_CANVAS={:?})", env_backend, std::env::var_os("PHOTOCRAFT_CPU_CANVAS"));
     let result = eframe::run_native(
         "Picsh",
@@ -89,6 +100,20 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                     "Picsh: wgpu adapter {} device_type {:?} backend {:?} driver {} {}",
                     got.name, got.device_type, got.backend, got.driver, got.driver_info
                 );
+                // Decision 011: what we request vs what upstream requires next to it.
+                // The desktop app asks device_limits(adapter) (adapter's own texture
+                // and buffer sizes); before the SU-9 fix this shell requested egui's
+                // defaults (8192 px cap) for the device, while the GPU refused only on
+                // the pinned software-adapter gate (main.rs:415-418), never on limits.
+                let requested = photocraft_ui_egui::gpu_canvas::device_limits(&rs.adapter);
+                let defaults = eframe::wgpu::Limits::default();
+                let a = rs.adapter.limits();
+                log::info!(
+                    "Picsh: device request: Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}",
+                    defaults.max_texture_dimension_2d, defaults.max_buffer_size,
+                    requested.max_texture_dimension_2d, requested.max_buffer_size,
+                    a.max_texture_dimension_2d, a.max_buffer_size
+                );
                 let software_window = got.device_type == eframe::wgpu::DeviceType::Cpu;
                 if software_window && mode != photocraft_engine::prefs::RenderingMode::Cpu {
                     app.perf.gpu_info.fallback = Some("No compatible hardware graphics adapter; using software graphics.".to_string());
@@ -109,6 +134,13 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
             });
             if let Some(reason) = fallback_reason {
                 photocraft_ui_egui::gpu_status::queue_fallback_notice(&mut app, &reason);
+            }
+            // Help > System Info exactly as desktop gpu_status.rs renders it (English
+            // by definition; gpu_status.rs:62-64). On the 320 px AVD menu automation for
+            // Help is unreliable, so CI captures the same content from logcat instead:
+            // fallback/lost state is already baked into the fields above at this point.
+            for line in photocraft_ui_egui::gpu_status::system_info(&app) {
+                log::info!("Picsh: SystemInfo: {line}");
             }
             Ok(Box::new(app))
         }),

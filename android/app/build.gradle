@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "io.github.ouaell.picsh"
         minSdk = 31
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 82
         versionName = "0.8.2"
     }
@@ -25,8 +25,10 @@ android {
     }
     namespace "io.github.ouaell.picsh"
 
-    // Emulator rungs (decision 009) ship their behavior knobs as a bundled,
-    // uncompressed asset that the shell reads at boot (picsh-knobs.txt).
+    // Emulator rung shipping knobs (decision 009, M1-8 release audit): knob assets live in
+    // the DEBUG-ONLY source sets app/src/rungGlesDebug/assets + app/src/rungCpuDebug/assets
+    // (<flavor><BuildType>): a release variant of any flavor never bundles picsh-knobs.txt
+    // (build.yml unzip audit proves presence on rungGles debug, absence on both releases).
     androidResources {
         noCompress 'txt'
     }

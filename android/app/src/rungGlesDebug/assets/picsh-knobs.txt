@@ -1,0 +1,4 @@
+# Emulator rung GLES (decision 009): force wgpu through the GLES backend.
+# Debug-only source set (<flavor><buildType>): a release variant of this flavor
+# never bundles knobs (audit step in build.yml proves absence).
+WGPU_BACKEND=gles

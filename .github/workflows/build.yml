@@ -92,11 +92,35 @@ jobs:
         with:
           gradle-version: "9.1.0"
 
-      - name: gradle assembleDebug + assembleRelease
+      - name: gradle assembleDebug + assembleRelease (+ rungGles pair for the knobs audit)
         working-directory: android
         run: |
           set -o pipefail
-          gradle -p . assembleRungDefaultDebug assembleRungDefaultRelease --no-daemon 2>&1 | tee gradle-build.log
+          gradle -p . assembleRungDefaultDebug assembleRungDefaultRelease assembleRungGlesDebug assembleRungGlesRelease --no-daemon 2>&1 | tee gradle-build.log
+
+      - name: knobs are debug-only by source set (release apks must not bundle picsh-knobs)
+        working-directory: android
+        run: |
+          set -o pipefail
+          KNOBS="assets/picsh-knobs.txt"
+          APK_DEBUG="app/build/outputs/apk/rungGles/debug/app-rungGles-debug.apk"
+          APK_GLES_REL="app/build/outputs/apk/rungGles/release/app-rungGles-release-unsigned.apk"
+          APK_DEFAULT_REL="app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk"
+          echo "source sets: app/src/rungGlesDebug/assets + app/src/rungCpuDebug/assets only (<flavor><BuildType> debug variants merge them)"
+          if unzip -l "$APK_DEBUG" | grep -q "$KNOBS"; then
+            echo "PASS $APK_DEBUG: $KNOBS present (debug-only by design)" | tee knobs-audit.log
+          else
+            echo "FAIL $APK_DEBUG: $KNOBS MISSING - debug source set not bundled"
+            exit 1
+          fi
+          for apk in "$APK_GLES_REL" "$APK_DEFAULT_REL"; do
+            if unzip -l "$apk" | grep -q "$KNOBS"; then
+              echo "FAIL $apk: $KNOBS present - release must never bundle knobs" | tee -a knobs-audit.log
+              exit 1
+            else
+              echo "PASS $apk: $KNOBS absent" | tee -a knobs-audit.log
+            fi
+          done
 
       - name: APK 16 KB page-alignment gate (extension of check-16kb.sh to packaging)
         run: |
@@ -118,6 +142,7 @@ jobs:
             jnilibs.txt
             android/gradle-build.log
             android/cargo-ndk.log
+            android/knobs-audit.log
             zipalign.txt
             android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
             android/app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk

@@ -1,2 +1,0 @@
-# Emulator rung GLES (decision 009): force wgpu through the GLES backend.
-WGPU_BACKEND=gles

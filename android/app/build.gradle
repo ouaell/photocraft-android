@@ -27,8 +27,9 @@ android {
 
     // Emulator rung shipping knobs (decision 009, M1-8 release audit): knob assets live in
     // the DEBUG-ONLY source sets app/src/rungGlesDebug/assets + app/src/rungCpuDebug/assets
-    // (<flavor><BuildType>): a release variant of any flavor never bundles picsh-knobs.txt
-    // (build.yml unzip audit proves presence on rungGles debug, absence on both releases).
+    // + app/src/rungCrashDebug/assets (<flavor><BuildType> camel naming): a release variant
+    // of any flavor never bundles picsh-knobs.txt (build.yml unzip audit proves presence on
+    // rungGles + rungCrash debug, absence on all assembled releases).
     androidResources {
         noCompress 'txt'
     }
@@ -46,6 +47,12 @@ android {
         rungCpu {
             dimension 'rung'
             applicationIdSuffix '.cpu'
+        }
+        // forced one-shot crash after startup: the Back/crash re-entry CI
+        // scenario (decision 011 amendment 3) rides this debug-only flavor
+        rungCrash {
+            dimension 'rung'
+            applicationIdSuffix '.crash'
         }
     }
 }

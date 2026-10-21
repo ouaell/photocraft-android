@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   emulator-e2e:
-    name: 'emulator-e2e (api 34: 3 rendering rungs; api 31 + api 36: default rung; logcat oracle)'
+    name: 'emulator-e2e (api 34: 3 rendering rungs + Back/crash re-entry; api 31 + api 36: default rung; logcat oracle)'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -77,11 +77,11 @@ jobs:
           set -o pipefail
           cargo ndk -t aarch64-linux-android -t x86_64-linux-android -o app/src/main/jniLibs build --release --locked 2>&1 | tee e2e-cargo-ndk.log
 
-      - name: gradle rungs (rungDefault + rungGles + rungCpu debug apks)
+      - name: gradle rungs (rungDefault + rungGles + rungCpu + rungCrash debug apks)
         working-directory: android
         run: |
           set -o pipefail
-          gradle -p . assembleRungDefaultDebug assembleRungGlesDebug assembleRungCpuDebug --no-daemon 2>&1 | tee e2e-gradle-build.log
+          gradle -p . assembleRungDefaultDebug assembleRungGlesDebug assembleRungCpuDebug assembleRungCrashDebug --no-daemon 2>&1 | tee e2e-gradle-build.log
 
       - name: logcat oracle red proof (seeded defect, no emulator)
         run: |
@@ -179,6 +179,26 @@ jobs:
           avd-name: m1-rung-default-api36
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: bash scripts/e2e-rung.sh default-api36 io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
+
+      - name: 'api 34: Back press then relaunch (re-entry gate, decision 011 amendment 3)'
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-back
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh back io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk back
+
+      - name: 'api 34: forced crash then relaunch (re-entry gate, decision 011 amendment 3)'
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: m1-rung-crash
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash scripts/e2e-rung.sh crash io.github.ouaell.picsh.crash android/app/build/outputs/apk/rungCrash/debug/app-rungCrash-debug.apk crash
 
       - name: upload emulator-e2e evidence (always, red or green)
         if: always()

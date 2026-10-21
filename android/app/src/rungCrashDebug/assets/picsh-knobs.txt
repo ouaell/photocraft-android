@@ -1,0 +1,3 @@
+# Forced crash for the Back/crash re-entry scenario (decision 011 amendment 3):
+# one-shot - the marker file picsh-test-crash.txt keeps the relaunch alive.
+PHOTOCRAFT_TEST_CRASH=1

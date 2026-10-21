@@ -66,11 +66,16 @@ pub fn apply_asset_knobs(app: &winit::platform::android::activity::AndroidApp) {
 
 /// Only the enum knobs the emulator rungs rely on may come from the asset;
 /// everything else stays compile-time or default (defense in depth: the asset
-/// must never grow into a config file).
+/// must never grow into a config file). `PHOTOCRAFT_TEST_CRASH` is the one-shot
+/// forced-crash knob of the re-entry CI scenario (decision 011 amendment 3).
 fn knob_allowed(key: &str) -> bool {
     matches!(
         key,
-        "WGPU_BACKEND" | "PHOTOCRAFT_CPU_CANVAS" | "RUST_LOG" | "WGPU_VALIDATION_INDIRECT_CALL"
+        "WGPU_BACKEND"
+            | "PHOTOCRAFT_CPU_CANVAS"
+            | "RUST_LOG"
+            | "WGPU_VALIDATION_INDIRECT_CALL"
+            | "PHOTOCRAFT_TEST_CRASH"
     )
 }
 

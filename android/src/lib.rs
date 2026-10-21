@@ -4,10 +4,14 @@
 //! with the filesystem `Services` subset (PORT-SPEC U-D mirror of the desktop
 //! `services.rs`); no dialogs yet (Android pickers land in a later milestone).
 //! Entry wiring mirrors `apps/photocraft/src/main.rs` minus the desktop-only
-//! pieces (titlebars, monitors, GPU marker/sentinel, pref-file pre-pass).
+//! pieces (titlebars, monitors, pref-file pre-pass); the desktop GPU probe
+//! ladder has its own Android counterpart in `gpu_ladder.rs` (decision 011
+//! amendment 3), which hands the validated device to eframe.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+#[cfg(target_os = "android")]
+mod gpu_ladder;
 #[cfg(target_os = "android")]
 mod jni_bridge;
 #[cfg(target_os = "android")]
@@ -19,14 +23,23 @@ use log::LevelFilter;
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 /// GameActivity entry (android-activity 0.6.1 calls this on its own main thread).
-/// May be re-entered on activity recreation: the logger and env bootstrapping are
-/// idempotent there.
+///
+/// Re-entry (decision 011 amendment 3): winit allows exactly one event loop per
+/// process, so a finished run (Back key, or a caught failure) cannot run eframe
+/// again in the same process; this entry therefore ends the process explicitly
+/// below, and Android starts the next activity launch in a fresh process with a
+/// clean GPU ladder. The run ends without manual state to flush: preferences
+/// persist through eframe's own `save_and_destroy` on loop end, and the M1
+/// shell wires no autosave service (`services.autosave` is None - the pinned
+/// ui-egui autosave runs only where that service is set).
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     // Panic must never unwind into Java frames (eframe-android-shell skill).
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(app)));
     if outcome.is_err() {
         log::error!("Picsh: android_main panicked; the activity ends without an abort");
     }
+    log::info!("Picsh: android_main done; exiting the process for a clean next launch");
+    std::process::exit(0);
 }
 
 #[cfg(target_os = "android")]
@@ -55,10 +68,19 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
     log::info!("Picsh: temp_dir={}", std::env::temp_dir().display());
 
     // Rendering plan, M1 form of desktop `gpu_startup::plan`: honor `WGPU_BACKEND`
-    // env passthrough (wgpu selects the backend from it when the instance is built),
-    // otherwise Automatic. No marker/sentinel state yet (later milestone).
+    // env passthrough (the ladder maps it to its rung list), otherwise Automatic.
     let env_backend = std::env::var("WGPU_BACKEND").ok().filter(|v| !v.trim().is_empty());
     let plan_reason = env_backend.as_ref().map(|v| format!("WGPU_BACKEND={v} overrides the backend"));
+
+    // Decision 011 amendment 3 (user option 5): the adapter ladder runs BEFORE
+    // eframe, headless - Vulkan, then GL, each with a real device validated by a
+    // buffer round trip; the first validating rung is handed to eframe through
+    // `WgpuSetup::Existing`, so the window runs on exactly the validated device.
+    // Rejections are recorded verbatim for logcat and System Info, and the
+    // crash-safe marker keeps a start that died inside a driver from blocking
+    // the next one. The shell requests no lower limits than upstream (SU-9):
+    // the preflight device request is exactly `gpu_canvas::device_limits`.
+    let ladder = gpu_ladder::run(Some(&dirs.config), env_backend.as_deref());
 
     // eframe 0.36.2 epi.rs: android_app is "required on Android to correctly create
     // the event loop" (decision 010). AndroidApp is Clone (android-activity 0.6.1).
@@ -67,26 +89,11 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
         android_app: Some(app.clone()),
         ..Default::default()
     };
-    // SU-9/F26 parity with gpu_startup.rs::configure: the device must be requested
-    // through the upstream public helper `gpu_canvas::device_limits(adapter)` (egui's
-    // base limits with the adapter's own texture and buffer sizes) rather than eframe's
-    // default descriptor capped to egui's 8192 px texture (egui-wgpu 0.36.2
-    // setup.rs:260-277). Decision 011 amendment: on api-31 the Vulkan SwiftShader
-    // adapter reports max_storage_buffer_binding_size 0, so the helper's egui base
-    // (128 MiB) would fail device creation before any window exists ("better than
-    // allowed 0"; the desktop app would fail identically on that adapter). The shell
-    // therefore clamps the helper's answer per hardware with wgpu's own public
-    // `Limits::or_worse_values_from` (wgpu 30.0.1: "for clamping requests for values
-    // beyond the supported limits") so no requested limit exceeds the chosen adapter.
-    // Desktop-only pieces of gpu_startup::configure (Windows Intel DX12 default, Mac
-    // indirect-validation skip, marker-on-adapter hook) have no Android counterpart
-    // at M1 (decision 011).
-    if let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup {
-        create.device_descriptor = std::sync::Arc::new(|adapter| eframe::wgpu::DeviceDescriptor {
-            label: Some("photocraft wgpu device"),
-            required_limits: photocraft_ui_egui::gpu_canvas::device_limits(adapter).or_worse_values_from(&adapter.limits()),
-            ..Default::default()
-        });
+    // Hand off the validated setup when the ladder selected a rung; otherwise
+    // eframe's default setup stands (upstream-identical failure mode: eframe's
+    // own request would fail the same way and be recorded as a run failure).
+    if let Some(setup) = ladder.setup.clone() {
+        options.wgpu_options.wgpu_setup = setup;
     }
     log::info!("Picsh: run_native starts (WGPU_BACKEND={:?}, PHOTOCRAFT_CPU_CANVAS={:?})", env_backend, std::env::var_os("PHOTOCRAFT_CPU_CANVAS"));
     let result = eframe::run_native(
@@ -98,11 +105,18 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
             // Long commands and file opens must never freeze the Android frame loop (#210);
             // PHOTOCRAFT_INLINE_JOBS stays available for CI debugging like on the desktop.
             app.background_jobs = std::env::var_os("PHOTOCRAFT_INLINE_JOBS").is_none();
-            // Desktop main.rs's GPU status block, M1 form (auto preference, no marker logic).
-            let selected = if env_backend.is_some() { "env".to_string() } else { "auto".to_string() };
-            let mut fallback = plan_reason;
+            // Desktop main.rs's GPU status block: the ladder's selection is the
+            // "Selected" line; the plan note plus every ladder skip/rejection is
+            // the "Fallback" record (decision 011 amendment 3).
+            let selected = ladder.selected.unwrap_or(if env_backend.is_some() { "env" } else { "auto" });
+            let mut fallback_parts: Vec<String> = Vec::new();
+            if let Some(reason) = plan_reason.clone() {
+                fallback_parts.push(reason);
+            }
+            fallback_parts.extend(ladder.notes.iter().cloned());
+            let mut fallback = (!fallback_parts.is_empty()).then(|| fallback_parts.join("; "));
             app.perf.gpu_info.preference = "auto".to_string();
-            app.perf.gpu_info.selected = selected;
+            app.perf.gpu_info.selected = selected.to_string();
             app.perf.gpu_info.fallback = fallback.clone();
             app.perf.gpu_info.canvas = "cpu".to_string();
             let mode = app.session.prefs().performance.effective_rendering_mode();
@@ -113,21 +127,18 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                     "Picsh: wgpu adapter {} device_type {:?} backend {:?} driver {} {}",
                     got.name, got.device_type, got.backend, got.driver, got.driver_info
                 );
-                // Decision 011: what we request vs what upstream requires next to it.
-                // The desktop app asks device_limits(adapter) (adapter's own texture
-                // and buffer sizes); the shell additionally clamps every field down to
-                // the chosen adapter (or_worse_values_from) because api-31's SwiftShader
-                // reports storage binding 0: before this clamp the egui base request
-                // failed device creation there ("better than allowed 0").
+                // Decision 011 amendment 3: no clamp - the device was requested in
+                // the preflight ladder with exactly gpu_canvas::device_limits(adapter)
+                // (SU-9) and egui runs on that same device through WgpuSetup::Existing;
+                // a degenerate adapter (api-31's SwiftShader Vulkan) is rejected by
+                // the ladder, so no clamped device is ever created.
                 let helper = photocraft_ui_egui::gpu_canvas::device_limits(&rs.adapter);
-                let requested = helper.clone().or_worse_values_from(&rs.adapter.limits());
                 let defaults = eframe::wgpu::Limits::default();
                 let a = rs.adapter.limits();
                 log::info!(
-                    "Picsh: device request: Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; requested {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}",
+                    "Picsh: device request: Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}",
                     defaults.max_texture_dimension_2d, defaults.max_buffer_size, defaults.max_storage_buffer_binding_size,
                     helper.max_texture_dimension_2d, helper.max_buffer_size,
-                    requested.max_texture_dimension_2d, requested.max_buffer_size, requested.max_storage_buffer_binding_size,
                     a.max_texture_dimension_2d, a.max_buffer_size, a.max_storage_buffer_binding_size
                 );
                 let software_window = got.device_type == eframe::wgpu::DeviceType::Cpu;
@@ -158,6 +169,7 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
             for line in photocraft_ui_egui::gpu_status::system_info(&app) {
                 log::info!("Picsh: SystemInfo: {line}");
             }
+            maybe_test_crash(&dirs.config);
             Ok(Box::new(app))
         }),
     );
@@ -165,6 +177,32 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
         Ok(()) => log::info!("Picsh: eframe loop returned cleanly"),
         Err(e) => log::error!("Picsh: eframe run failed: {e}"),
     }
+}
+
+/// CI knob `PHOTOCRAFT_TEST_CRASH` (debug-only rungCrash asset, decision 011
+/// amendment 3): after the ready evidence above (device request + System Info)
+/// is logged, end the process the way a hard driver crash would, so the
+/// crash-relaunch scenario proves the relaunch path. One-shot: the marker file
+/// in the config directory is written BEFORE the panic, so the relaunch starts
+/// without the knob's effect (uninstalling the app clears the marker).
+/// `panic_any` keeps the payload greppable in logcat; the unwind is caught in
+/// android_main, which then exits the process.
+#[cfg(target_os = "android")]
+#[allow(clippy::panic)]
+fn maybe_test_crash(config_dir: &std::path::Path) {
+    if std::env::var_os("PHOTOCRAFT_TEST_CRASH").is_none() {
+        return;
+    }
+    let marker = config_dir.join("picsh-test-crash.txt");
+    if marker.exists() {
+        log::info!("Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker {}); staying up", marker.display());
+        return;
+    }
+    if let Err(e) = std::fs::write(&marker, b"PHOTOCRAFT_TEST_CRASH\n") {
+        log::warn!("Picsh: could not write the crash marker {}: {e}", marker.display());
+    }
+    log::error!("Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now");
+    std::panic::panic_any("PHOTOCRAFT_TEST_CRASH");
 }
 
 /// Logcat routing for every `log` record of the shell and of the upstream crates.

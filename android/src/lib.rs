@@ -67,14 +67,27 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
         android_app: Some(app.clone()),
         ..Default::default()
     };
-    // SU-9/F26 parity with gpu_startup.rs::configure: eframe's default device
-    // descriptor caps max_texture_dimension_2d at egui's 8192 px (egui-wgpu 0.36.2
-    // setup.rs:260-277); the desktop app instead asks the upstream public helper for
-    // the adapter's own texture and buffer limits (apps/photocraft/src/gpu_startup.rs:323
-    // -> crates/ui-egui/src/gpu_canvas.rs:801-815). Same helper, no copy. Desktop-only
-    // pieces of configure (Windows Intel DX12 default, Mac indirect-validation skip,
-    // marker-on-adapter hook) have no Android counterpart at M1 (decision 011).
-    photocraft_ui_egui::gpu_canvas::use_adapter_limits(&mut options.wgpu_options.wgpu_setup);
+    // SU-9/F26 parity with gpu_startup.rs::configure: the device must be requested
+    // through the upstream public helper `gpu_canvas::device_limits(adapter)` (egui's
+    // base limits with the adapter's own texture and buffer sizes) rather than eframe's
+    // default descriptor capped to egui's 8192 px texture (egui-wgpu 0.36.2
+    // setup.rs:260-277). Decision 011 amendment: on api-31 the Vulkan SwiftShader
+    // adapter reports max_storage_buffer_binding_size 0, so the helper's egui base
+    // (128 MiB) would fail device creation before any window exists ("better than
+    // allowed 0"; the desktop app would fail identically on that adapter). The shell
+    // therefore clamps the helper's answer per hardware with wgpu's own public
+    // `Limits::or_worse_values_from` (wgpu 30.0.1: "for clamping requests for values
+    // beyond the supported limits") so no requested limit exceeds the chosen adapter.
+    // Desktop-only pieces of gpu_startup::configure (Windows Intel DX12 default, Mac
+    // indirect-validation skip, marker-on-adapter hook) have no Android counterpart
+    // at M1 (decision 011).
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup {
+        create.device_descriptor = std::sync::Arc::new(|adapter| eframe::wgpu::DeviceDescriptor {
+            label: Some("photocraft wgpu device"),
+            required_limits: photocraft_ui_egui::gpu_canvas::device_limits(adapter).or_worse_values_from(&adapter.limits()),
+            ..Default::default()
+        });
+    }
     log::info!("Picsh: run_native starts (WGPU_BACKEND={:?}, PHOTOCRAFT_CPU_CANVAS={:?})", env_backend, std::env::var_os("PHOTOCRAFT_CPU_CANVAS"));
     let result = eframe::run_native(
         "Picsh",
@@ -102,17 +115,20 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                 );
                 // Decision 011: what we request vs what upstream requires next to it.
                 // The desktop app asks device_limits(adapter) (adapter's own texture
-                // and buffer sizes); before the SU-9 fix this shell requested egui's
-                // defaults (8192 px cap) for the device, while the GPU refused only on
-                // the pinned software-adapter gate (main.rs:415-418), never on limits.
-                let requested = photocraft_ui_egui::gpu_canvas::device_limits(&rs.adapter);
+                // and buffer sizes); the shell additionally clamps every field down to
+                // the chosen adapter (or_worse_values_from) because api-31's SwiftShader
+                // reports storage binding 0: before this clamp the egui base request
+                // failed device creation there ("better than allowed 0").
+                let helper = photocraft_ui_egui::gpu_canvas::device_limits(&rs.adapter);
+                let requested = helper.clone().or_worse_values_from(&rs.adapter.limits());
                 let defaults = eframe::wgpu::Limits::default();
                 let a = rs.adapter.limits();
                 log::info!(
-                    "Picsh: device request: Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}",
-                    defaults.max_texture_dimension_2d, defaults.max_buffer_size,
-                    requested.max_texture_dimension_2d, requested.max_buffer_size,
-                    a.max_texture_dimension_2d, a.max_buffer_size
+                    "Picsh: device request: Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; requested {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}",
+                    defaults.max_texture_dimension_2d, defaults.max_buffer_size, defaults.max_storage_buffer_binding_size,
+                    helper.max_texture_dimension_2d, helper.max_buffer_size,
+                    requested.max_texture_dimension_2d, requested.max_buffer_size, requested.max_storage_buffer_binding_size,
+                    a.max_texture_dimension_2d, a.max_buffer_size, a.max_storage_buffer_binding_size
                 );
                 let software_window = got.device_type == eframe::wgpu::DeviceType::Cpu;
                 if software_window && mode != photocraft_engine::prefs::RenderingMode::Cpu {

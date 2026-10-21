@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- games-activity 4.4.0's GameActivity is an AppCompatActivity and throws
+         IllegalStateException in onCreateSurfaceView without an AppCompat
+         descendant theme (CI 39503833071). This is the agdk-eframe template's
+         theme, byte-equal. -->
+    <style name="ActivityTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- For full-screen layout, cutout support -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>

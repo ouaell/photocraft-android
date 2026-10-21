@@ -3,7 +3,8 @@
 
     <application
         android:label="Picsh"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/ActivityTheme">
 
         <activity
             android:name="com.google.androidgamesdk.GameActivity"

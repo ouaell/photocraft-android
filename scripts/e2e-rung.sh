@@ -16,18 +16,54 @@ fatal='FATAL EXCEPTION|ANR in .|Fatal signal 11|signal 11|panicked at|JNI DETECT
 adb uninstall "$PKG" >/dev/null 2>&1 || true
 adb install -r "$APK" 2>&1 | tee "$OUT/install.log"
 
-adb shell am start -n "$PKG/com.google.androidgamesdk.GameActivity" 2>&1 | tee "$OUT/am-start.log"
+# Ready-marker + one relaunch (decision 011 amendment 3). A freshly booted emulator
+# occasionally tears the activity down ~30 ms after resume while the launcher role is
+# still being re-registered (observed once on the 3rd consecutive boot, run
+# 39548313457 rungs/cpu: pause/stop/destroy with no FATAL, no Rust panic, no lmkd
+# record; the same rung binary was green on two prior boots and boots 1-2 of that run).
+# We therefore wait (bounded) for the app's own "device request:" log marker; if the
+# pid died before any marker appeared, am start once more and re-capture the pid. No
+# assertion changes: the oracle and parity below judge whatever is finally captured.
+launch_and_log() {
+    adb shell am start -n "$PKG/com.google.androidgamesdk.GameActivity" 2>&1 | tee -a "$OUT/am-start.log"
+    local newpid=""
+    for i in $(seq 1 30); do
+        newpid="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r\n ')"
+        [ -n "$newpid" ] && break
+        sleep 2
+    done
+    PID="$newpid"
+}
 
 PID=""
-for i in $(seq 1 30); do
-    PID="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r\n ')"
-    [ -n "$PID" ] && break
-    sleep 2
-done
+launch_and_log
 echo "pid=$PID" | tee "$OUT/pid.txt"
 
-# Adapter/first-frame window (SwiftShader boots slowly; generous but bounded).
-sleep 15
+READY=""
+for attempt in 1 2; do
+    for i in $(seq 1 45); do
+        if [ -n "$PID" ] && adb logcat -d --pid="$PID" -v time 2>/dev/null | grep -aq "Picsh: device request: "; then
+            READY="yes"
+            break
+        fi
+        if [ -n "$PID" ]; then
+            if ! adb shell pidof "$PKG" 2>/dev/null | grep -q "[0-9]"; then
+                break   # died without a marker -> relaunch below
+            fi
+        fi
+        sleep 1
+    done
+    [ -n "$READY" ] && break
+    if [ "$attempt" = "1" ]; then
+        echo "relaunch: activity died before the ready marker (one retry)" | tee -a "$OUT/pid.txt"
+        launch_and_log
+        echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
+    fi
+done
+echo "ready=$READY" | tee -a "$OUT/pid.txt"
+
+# Adapter/first-frame grace window after the marker (SwiftShader boots slowly).
+sleep 10
 adb exec-out screencap -p > "$OUT/screenshot-1.png"
 sleep 5
 adb exec-out screencap -p > "$OUT/screenshot-2.png"

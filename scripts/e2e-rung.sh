@@ -89,6 +89,15 @@ wait_ready() {
     echo "ready=$READY" | tee -a "$OUT/pid.txt"
 }
 
+# One install per rung before boot 1: am start can only resolve the GameActivity
+# component once the package is on the device. The install line was lost when this
+# script gained the scenario argument (run 39608063154 rungs/default: no install.log
+# in the artifact, "Error type 3: Activity class ... does not exist", pid= empty).
+adb uninstall "$PKG" >/dev/null 2>&1 || true
+if ! adb install -r "$APK" > "$OUT/install.log" 2>&1; then
+    red_exit install "install.red" "APK install failed: $(tail -1 "$OUT/install.log")"
+fi
+
 # ---- boot 1 ----------------------------------------------------------------
 PID=""
 launch_and_log

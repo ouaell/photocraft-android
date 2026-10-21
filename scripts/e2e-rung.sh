@@ -2,14 +2,15 @@
 # One rendering-rung of the emulator e2e matrix (docs/decisions/009-ci-probes.md).
 # Args: <rung-name> <package-name> <apk-path> [scenario]
 #   scenario (optional, default none):
-#     back  - boot, press Back, the pid must exit cleanly ("Picsh: eframe loop
-#             returned cleanly"), then a relaunch must show the UI again in a new
-#             process (winit's one-event-loop re-entry gate, decision 011
-#             amendment 3).
-#     crash - the rungCrash apk (PHOTOCRAFT_TEST_CRASH=1, one-shot): pid 1 must
-#             die right after the ready marker with the "PHOTOCRAFT_TEST_CRASH"
-#             payload in logcat; the relaunch must come up normally (the marker
-#             file skips the knob's second firing).
+#     back  - boot, press Back, the app must log its leave line and the pid must
+#             exit, then a relaunch must show the UI again in a new process
+#             (winit's one-event-loop re-entry gate, decision 011 amendment 3).
+#     crash - the rungCrash apk (PHOTOCRAFT_TEST_CRASH=1, one-shot): the crash
+#             must show up in the log of the launched process and that process
+#             must be gone; the relaunch must come up normally (the marker file
+#             skips the knob's second firing).
+# `pidof` can answer with several pids for the package, so the script keeps the
+# whole list (PIDS) and judges per pid - see the comment on launch_and_log.
 # Booted by android-emulator-runner's `script` step; kills the emulator at exit so
 # the next rung step boots its own AVD.
 set -o pipefail
@@ -23,23 +24,69 @@ echo "rung=$RUNG package=$PKG apk=$APK scenario=$SCENARIO" | tee "$OUT/config.tx
 
 fatal='FATAL EXCEPTION|ANR in .|Fatal signal 11|signal 11|panicked at|JNI DETECTED ERROR|UnsatisfiedLinkError|Validation Error|Device lost|StrictMode|invalid local reference'
 
+# Process bookkeeping. `pidof` can answer with SEVERAL pids for the package
+# (run 39672720132 rungs/crash: "3767 3900"). The old code stripped the
+# whitespace and used the concatenation ("37673900") as one pid, so
+# `adb logcat --pid=37673900` matched nothing and the crash-payload gate failed
+# on a crash that had actually happened. The list is now kept intact: PIDS is
+# the whole list, PID is its first entry, and every log capture is per pid.
 launch_and_log() {
     adb shell am start -n "$PKG/com.google.androidgamesdk.GameActivity" 2>&1 | tee -a "$OUT/am-start.log"
-    local newpid=""
+    local pids=""
     for i in $(seq 1 30); do
-        newpid="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r\n ')"
-        [ -n "$newpid" ] && break
+        pids="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ')"
+        echo "$pids" | grep -q "[0-9]" && break
+        pids=""
         sleep 2
     done
-    PID="$newpid"
+    echo "pids=$pids" >> "$OUT/pids.txt"
+    PIDS="$pids"
+    PID="$(echo "$pids" | awk '{print $1}')"
 }
 
-pid_gone() {   # true (0) once no process of the package is alive
+pid_alive() {  # true (0) while the given pid is still in the package's process list
+    [ -n "$1" ] || return 1
+    adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q -w "$1"
+}
+
+pid_gone() {   # true (0) once the given pid (default: the launched one) is gone
+    local target="${1:-$PID}"
     for i in $(seq 1 45); do
-        adb shell pidof "$PKG" 2>/dev/null | grep -q "[0-9]" || return 0
+        pid_alive "$target" || return 0
         sleep 2
     done
     return 1
+}
+
+pids_gone() {   # true (0) once none of the given pids is alive (one shared 90s budget)
+    local p
+    for i in $(seq 1 45); do
+        local alive=0
+        for p in "$@"; do
+            pid_alive "$p" && alive=1
+        done
+        [ "$alive" = "0" ] && return 0
+        sleep 2
+    done
+    return 1
+}
+
+pkg_gone() {   # true (0) once no process of the package is alive
+    for i in $(seq 1 45); do
+        adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q "[0-9]" || return 0
+        sleep 2
+    done
+    return 1
+}
+
+capture_logs() {   # capture_logs <out-file> <pid> [pid...] - one pid-scoped logcat per pid
+    local out="$1"; shift
+    : > "$out"
+    local p
+    for p in "$@"; do
+        echo "===== pid $p =====" >> "$out"
+        adb logcat -d --pid="$p" -v threadtime >> "$out" 2>/dev/null || true
+    done
 }
 
 finish() {
@@ -78,15 +125,23 @@ red_evidence() {
 # We therefore wait (bounded) for the app's own "device request:" log marker; if the
 # pid died before any marker appeared, am start once more and re-capture the pid. No
 # assertion changes: the oracle and parity below judge whatever is finally captured.
+# The marker is looked for in EVERY pid of the package (pidof can answer with
+# several), and PID is set to the pid that actually produced it, so the oracle
+# judges the process that really ran the app.
 wait_ready() {
     READY=""
+    READY_PID=""
     for attempt in 1 2; do
         for i in $(seq 1 45); do
-            if [ -n "$PID" ] && adb logcat -d --pid="$PID" -v time 2>/dev/null | grep -aq "Picsh: device request: "; then
-                READY="yes"
-                break
-            fi
-            if [ -n "$PID" ]; then
+            for p in $PIDS; do
+                if adb logcat -d --pid="$p" -v time 2>/dev/null | grep -aq "Picsh: device request: "; then
+                    READY="yes"
+                    READY_PID="$p"
+                    break
+                fi
+            done
+            [ -n "$READY" ] && break
+            if [ -n "$PIDS" ]; then
                 if ! adb shell pidof "$PKG" 2>/dev/null | grep -q "[0-9]"; then
                     break   # died without a marker -> relaunch below
                 fi
@@ -100,6 +155,7 @@ wait_ready() {
             echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
         fi
     done
+    [ -n "$READY_PID" ] && PID="$READY_PID"
     echo "ready=$READY" | tee -a "$OUT/pid.txt"
 }
 
@@ -120,16 +176,58 @@ echo "pid=$PID" | tee "$OUT/pid.txt"
 if [ "$SCENARIO" = "crash" ]; then
     # No ready/relaunch logic here: a relaunch would consume the one-shot marker
     # and mask the scenario. The knob fires at the end of the creator closure.
-    if ! pid_gone; then
+    #
+    # Order matters: the death check comes FIRST (exactly as before), because
+    # the window in which no process of the package is alive is the moment the
+    # crash tore the app down; asking for the crash evidence afterwards still
+    # works (logcat keeps the buffer of a dead process), while the other order
+    # could miss that window.
+    #
+    # The gate: the forced crash must appear in the log of a process of this
+    # package, and that process must be gone afterwards. The crash is matched on
+    # the CRASH event lines, never on the bare token - the relaunch logs
+    # "PHOTOCRAFT_TEST_CRASH already fired once" (same token) and must not be
+    # mistaken for the crash.
+    if ! pkg_gone; then
         red_evidence
-        red_exit scenario "scenario.red" "pid 1 never exited after the forced-crash boot"
+        red_exit scenario "scenario.red" "a process of $PKG is still alive after the forced crash (live pids: $(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' '))"
     fi
-    adb logcat -d --pid="$PID" -v time > "$OUT/logcat-boot1.txt" 2>/dev/null || true
-    grep -aq "PHOTOCRAFT_TEST_CRASH" "$OUT/logcat-boot1.txt" || {
-        red_exit scenario "scenario.red" "no PHOTOCRAFT_TEST_CRASH payload in the pid-1 logcat"
-    }
-    echo "scenario boot 1: forced crash observed, pid $PID gone" | tee "$OUT/scenario-boot1.txt"
-    PID1="$PID"
+    CRASHED=""
+    for i in $(seq 1 45); do
+        for p in $PIDS; do
+            if adb logcat -d --pid="$p" -v threadtime 2>/dev/null \
+                | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
+                         -e "Rust panic: PHOTOCRAFT_TEST_CRASH"; then
+                CRASHED="$p"
+                break
+            fi
+        done
+        [ -n "$CRASHED" ] && break
+        sleep 2
+    done
+    if [ -z "$CRASHED" ]; then
+        # The crashed process may have died before pidof listed it (run
+        # 39672720132 rungs/crash: pidof answered with two pids and the old code
+        # concatenated them into one bogus pid, so the pid-scoped logcat was
+        # empty and this gate failed on a crash that had happened). Fall back to
+        # the whole logcat, take the pid out of the matching line (threadtime
+        # puts it in field 3) and judge THAT process.
+        CRASHED="$(adb logcat -d -v threadtime 2>/dev/null \
+            | grep -a -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
+                    -e "Rust panic: PHOTOCRAFT_TEST_CRASH" \
+            | awk '{print $3}' | grep -E '^[0-9]+$' | head -1)"
+    fi
+    if [ -z "$CRASHED" ]; then
+        red_evidence
+        red_exit scenario "scenario.red" "no PHOTOCRAFT_TEST_CRASH crash event in the log of the launched pid(s) ($PIDS)"
+    fi
+    if ! pid_gone "$CRASHED"; then
+        red_evidence
+        red_exit scenario "scenario.red" "the crashed pid $CRASHED is still alive 90s after the forced crash"
+    fi
+    capture_logs "$OUT/logcat-boot1.txt" $PIDS
+    echo "scenario boot 1: forced crash observed in pid $CRASHED, that pid is gone" | tee "$OUT/scenario-boot1.txt"
+    PID1="$CRASHED"
 else
     wait_ready
     PID1="$PID"
@@ -138,24 +236,38 @@ else
         sleep 10
         adb exec-out screencap -p > "$OUT/screenshot-boot1.png"
         adb shell input keyevent 4 2>&1 | tee "$OUT/back.log"
-        if ! pid_gone; then
-            red_evidence
-            red_exit scenario "scenario.red" "pid 1 did not exit within 90s of Back (evidence: logcat-onred-*.txt, activities-onred.txt, screenshot-red.png)"
-        fi
-        adb logcat -d --pid="$PID1" -v time > "$OUT/logcat-boot1.txt" 2>/dev/null || true
         # The Back key asks the app to close (the shell's wrapper), upstream's
         # leave guard runs, and the app leaves through the platform quit
         # (`Services::quit` -> the shell's leave hook). On Android the eframe
         # run itself cannot return (winit's Android event loop never exits on
         # its own), so the leave evidence is the shell's own line, not
         # "efrace loop returned cleanly".
-        grep -aq "Picsh: leaving: the app quits" "$OUT/logcat-boot1.txt" || {
-            red_exit scenario "scenario.red" "no leave line in the pid-1 logcat"
-        }
+        LEAVE_PID=""
+        for i in $(seq 1 45); do
+            for p in $PIDS; do
+                if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "Picsh: leaving: the app quits"; then
+                    LEAVE_PID="$p"
+                    break
+                fi
+            done
+            [ -n "$LEAVE_PID" ] && break
+            sleep 2
+        done
+        if [ -z "$LEAVE_PID" ]; then
+            red_evidence
+            red_exit scenario "scenario.red" "no leave line in the log of the launched pid(s) ($PIDS)"
+        fi
+        if ! pkg_gone; then
+            red_evidence
+            red_exit scenario "scenario.red" "pid $LEAVE_PID did not exit within 90s of Back (evidence: logcat-onred-*.txt, activities-onred.txt, screenshot-red.png)"
+        fi
+        capture_logs "$OUT/logcat-boot1.txt" $PIDS
         grep -aq "Picsh: Rust panic" "$OUT/logcat-boot1.txt" && {
+            red_evidence
             red_exit scenario "scenario.red" "the app panicked while leaving"
         }
-        echo "scenario boot 1: Back pressed, pid $PID1 exited cleanly" | tee "$OUT/scenario-boot1.txt"
+        echo "scenario boot 1: Back pressed, pid $LEAVE_PID exited cleanly" | tee "$OUT/scenario-boot1.txt"
+        PID1="$LEAVE_PID"
     fi
 fi
 
@@ -164,6 +276,7 @@ if [ "$SCENARIO" != "none" ]; then
     launch_and_log
     echo "pid=$PID (relaunch)" | tee -a "$OUT/pid.txt"
     [ -n "$PID" ] && [ "$PID" != "$PID1" ] || {
+        red_evidence
         red_exit scenario "scenario.red" "relaunch pid is empty or unchanged ($PID1)"
     }
     wait_ready

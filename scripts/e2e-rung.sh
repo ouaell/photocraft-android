@@ -56,6 +56,20 @@ red_exit() {   # red_exit <gate> <file> <detail> - write the gate's .red, json, 
     exit 1
 }
 
+# Failure-path capture, called BEFORE every scenario red_exit: gate 39615314265
+# (Back, rung failed with "pid did not exit within 90s") produced no logcat at the
+# failure point because the pid-scoped capture runs only after a successful exit,
+# so the red was undiagnosable. Run 39608063154 showed the pid-scoped oracle gets
+# nothing when the pid is missing. Not a gate change: the assertions stay as-is.
+red_evidence() {
+    adb logcat -d -t 200000 > "$OUT/logcat-onred-full.txt" 2>/dev/null || true
+    if [ -n "$PID" ]; then
+        adb logcat -d --pid="$PID" -v time > "$OUT/logcat-onred-pid.txt" 2>/dev/null || true
+    fi
+    adb shell dumpsys activity activities > "$OUT/activities-onred.txt" 2>/dev/null || true
+    adb exec-out screencap -p > "$OUT/screenshot-red.png" 2>/dev/null || true
+}
+
 # Ready-marker + one relaunch (decision 011 amendment 3). A freshly booted emulator
 # occasionally tears the activity down ~30 ms after resume while the launcher role is
 # still being re-registered (observed once on the 3rd consecutive boot, run
@@ -107,6 +121,7 @@ if [ "$SCENARIO" = "crash" ]; then
     # No ready/relaunch logic here: a relaunch would consume the one-shot marker
     # and mask the scenario. The knob fires at the end of the creator closure.
     if ! pid_gone; then
+        red_evidence
         red_exit scenario "scenario.red" "pid 1 never exited after the forced-crash boot"
     fi
     adb logcat -d --pid="$PID" -v time > "$OUT/logcat-boot1.txt" 2>/dev/null || true
@@ -124,7 +139,8 @@ else
         adb exec-out screencap -p > "$OUT/screenshot-boot1.png"
         adb shell input keyevent 4 2>&1 | tee "$OUT/back.log"
         if ! pid_gone; then
-            red_exit scenario "scenario.red" "pid 1 did not exit within 90s of Back"
+            red_evidence
+            red_exit scenario "scenario.red" "pid 1 did not exit within 90s of Back (evidence: logcat-onred-*.txt, activities-onred.txt, screenshot-red.png)"
         fi
         adb logcat -d --pid="$PID1" -v time > "$OUT/logcat-boot1.txt" 2>/dev/null || true
         grep -aq "Picsh: eframe loop returned cleanly" "$OUT/logcat-boot1.txt" || {
@@ -142,7 +158,7 @@ if [ "$SCENARIO" != "none" ]; then
         red_exit scenario "scenario.red" "relaunch pid is empty or unchanged ($PID1)"
     }
     wait_ready
-    [ -n "$READY" ] || red_exit scenario "scenario.red" "relaunch never reached the ready marker"
+    if [ -z "$READY" ]; then red_evidence; red_exit scenario "scenario.red" "relaunch never reached the ready marker"; fi
 fi
 
 # ---- evidence capture (boot 1 for none, boot 2 for back/crash) --------------

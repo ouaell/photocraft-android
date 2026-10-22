@@ -1,0 +1,1 @@
+scenario boot 1: Back pressed, pid 3791 exited cleanly

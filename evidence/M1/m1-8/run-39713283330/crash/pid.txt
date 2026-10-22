@@ -1,0 +1,4 @@
+pid=3516
+pid=3920 (relaunch)
+ready=yes
+oracle-log=rungs/crash/logcat-pid.txt

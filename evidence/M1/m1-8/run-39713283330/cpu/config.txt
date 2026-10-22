@@ -1,0 +1,1 @@
+rung=cpu package=io.github.ouaell.picsh.cpu apk=android/app/build/outputs/apk/rungCpu/debug/app-rungCpu-debug.apk scenario=none

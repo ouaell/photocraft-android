@@ -1,0 +1,3 @@
+pid=3542
+ready=yes
+oracle-log=rungs/cpu/logcat-pid.txt

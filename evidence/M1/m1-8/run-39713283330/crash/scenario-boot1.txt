@@ -1,0 +1,1 @@
+scenario boot 1: forced crash observed in pid 3516, that pid is gone

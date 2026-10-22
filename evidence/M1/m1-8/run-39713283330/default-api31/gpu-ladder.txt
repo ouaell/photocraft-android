@@ -1,0 +1,6 @@
+10-22 03:08:42.472  3029  3068 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 03:08:42.673  3029  3068 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 03:08:42.680  3029  3068 W picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: rejected: device request: Limit 'max_storage_buffer_binding_size' value 134217728 is better than allowed 0
+10-22 03:08:42.680  3029  3068 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing gl
+10-22 03:08:42.725  3029  3068 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung gl: adapter Android Emulator OpenGL ES Translator (Google SwiftShader) device_type Cpu backend Gl driver  OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+10-22 03:08:42.747  3029  3068 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected gl

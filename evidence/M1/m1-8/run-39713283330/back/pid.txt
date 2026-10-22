@@ -1,0 +1,5 @@
+pid=3791
+ready=yes
+pid=4658 (relaunch)
+ready=yes
+oracle-log=rungs/back/logcat-pid.txt

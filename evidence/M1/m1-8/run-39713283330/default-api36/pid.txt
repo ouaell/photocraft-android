@@ -1,0 +1,3 @@
+pid=2462
+ready=yes
+oracle-log=rungs/default-api36/logcat-pid.txt

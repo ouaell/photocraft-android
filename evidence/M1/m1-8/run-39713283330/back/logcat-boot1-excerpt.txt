@@ -1,0 +1,19 @@
+10-22 03:12:33.324  3791  3910 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 03:12:33.367  3791  3910 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 03:12:33.486  3791  3910 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192, max_buffer_size: 268435456, max_storage_buffer_binding_size: 134217728 }; device_limits { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824 }; adapter { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824, max_storage_buffer_binding_size: 1073741824 }
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: PhotoCraft 0.8.2 (dev build)
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Platform: android x86_64
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Graphics adapter: SwiftShader Device (Subzero)
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Backend: vulkan (cpu)
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Driver: SwiftShader driver
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: GPU backend preference: auto
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Selected at launch: vulkan
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Window renderer: Software adapter
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Fallback: No compatible hardware graphics adapter; using software graphics.
+10-22 03:12:33.915  3791  3910 I picsh   : picsh: Picsh: SystemInfo: Monitor profile: sRGB IEC61966-2.1 (fallback: this platform doesn't report display profiles)
+10-22 03:12:45.015  3791  3910 I picsh   : picsh: Picsh: Back key pressed; asking the app to close
+10-22 03:12:45.024  3791  3910 I picsh   : picsh::services: Picsh: leaving: the app quits; the process ends
+10-22 03:12:45.050  3791  3910 F ub.ouaell.picsh: java_vm_ext.cc:591] JNI DETECTED ERROR IN APPLICATION: thread Thread[18,tid=3910,Native,Thread*=0x711effc8d950,peer=0x12f80000,"android_main"] using JNIEnv* from thread Thread[1,tid=3791,Runnable,Thread*=0x711effc55f50,peer=0x729b3f98,"main"]
+10-22 03:12:45.339  3791  3910 F ub.ouaell.picsh: runtime.cc:699] JNI DETECTED ERROR IN APPLICATION: thread Thread[18,tid=3910,Native,Thread*=0x711effc8d950,peer=0x12f80000,"android_main"] using JNIEnv* from thread Thread[1,tid=3791,Runnable,Thread*=0x711effc55f50,peer=0x729b3f98,"main"]

@@ -1,0 +1,11 @@
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: PhotoCraft 0.8.2 (dev build)
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Platform: android x86_64
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Graphics adapter: SwiftShader Device (Subzero)
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Backend: vulkan (cpu)
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Driver: SwiftShader driver
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: GPU backend preference: auto
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Selected at launch: vulkan
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Window renderer: Software adapter
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Fallback: No compatible hardware graphics adapter; using software graphics.
+10-22 03:14:12.605  3920  4007 I picsh   : picsh: Picsh: SystemInfo: Monitor profile: sRGB IEC61966-2.1 (fallback: this platform doesn't report display profiles)

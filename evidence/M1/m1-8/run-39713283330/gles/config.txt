@@ -1,0 +1,1 @@
+rung=gles package=io.github.ouaell.picsh.gles apk=android/app/build/outputs/apk/rungGles/debug/app-rungGles-debug.apk scenario=none

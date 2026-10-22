@@ -1,0 +1,3 @@
+pid=3399
+ready=yes
+oracle-log=rungs/gles/logcat-pid.txt

@@ -1,0 +1,18 @@
+10-22 03:14:07.960  3516  3616 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 03:14:08.056  3516  3616 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 03:14:08.181  3516  3616 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192, max_buffer_size: 268435456, max_storage_buffer_binding_size: 134217728 }; device_limits { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824 }; adapter { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824, max_storage_buffer_binding_size: 1073741824 }
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: PhotoCraft 0.8.2 (dev build)
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Platform: android x86_64
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Graphics adapter: SwiftShader Device (Subzero)
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Backend: vulkan (cpu)
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Driver: SwiftShader driver
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: GPU backend preference: auto
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Selected at launch: vulkan
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Window renderer: Software adapter
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Fallback: No compatible hardware graphics adapter; using software graphics.
+10-22 03:14:08.575  3516  3616 I picsh   : picsh: Picsh: SystemInfo: Monitor profile: sRGB IEC61966-2.1 (fallback: this platform doesn't report display profiles)
+10-22 03:14:08.575  3516  3616 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
+10-22 03:14:08.575  3516  3616 E picsh   : PHOTOCRAFT_TEST_CRASH
+10-22 03:14:08.596  3516  3616 F ell.picsh.crash: java_vm_ext.cc:591] JNI DETECTED ERROR IN APPLICATION: thread Thread[16,tid=3616,Native,Thread*=0x7c532c0d3cc0,peer=0x12f00000,"android_main"] using JNIEnv* from thread Thread[1,tid=3516,Runnable,Thread*=0x7c532c09a6f0,peer=0x72741d78,"main"]

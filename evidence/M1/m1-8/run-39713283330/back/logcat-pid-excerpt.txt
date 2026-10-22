@@ -1,0 +1,15 @@
+10-22 03:12:47.553  4658  4678 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 03:12:47.576  4658  4678 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 03:12:47.620  4658  4678 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192, max_buffer_size: 268435456, max_storage_buffer_binding_size: 134217728 }; device_limits { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824 }; adapter { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824, max_storage_buffer_binding_size: 1073741824 }
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: PhotoCraft 0.8.2 (dev build)
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Platform: android x86_64
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Graphics adapter: SwiftShader Device (Subzero)
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Backend: vulkan (cpu)
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Driver: SwiftShader driver
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: GPU backend preference: auto
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Selected at launch: vulkan
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Window renderer: Software adapter
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Fallback: No compatible hardware graphics adapter; using software graphics.
+10-22 03:12:48.013  4658  4678 I picsh   : picsh: Picsh: SystemInfo: Monitor profile: sRGB IEC61966-2.1 (fallback: this platform doesn't report display profiles)

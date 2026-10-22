@@ -1,0 +1,3 @@
+10-22 03:11:08.667  2462  2534 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 03:11:08.824  2462  2534 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 03:11:08.936  2462  2534 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan

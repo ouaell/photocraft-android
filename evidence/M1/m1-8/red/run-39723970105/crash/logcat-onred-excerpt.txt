@@ -1,0 +1,9 @@
+10-22 05:14:36.513  3054  3329 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 05:14:36.595  3054  3329 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 05:14:36.740  3054  3329 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan
+10-22 05:14:36.916  3054  3329 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192, max_buffer_size: 268435456, max_storage_buffer_binding_size: 134217728 }; device_limits { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824 }; adapter { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824, max_storage_buffer_binding_size: 1073741824 }
+10-22 05:14:36.916  3054  3329 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
+10-22 05:14:36.916  3054  3329 E picsh   : picsh: Picsh: Rust panic: panicked at src/lib.rs:264:5:
+10-22 05:14:36.916  3054  3329 E picsh   : PHOTOCRAFT_TEST_CRASH
+10-22 05:14:36.939  3054  3329 E picsh   : picsh: Picsh: android_main panicked; the activity ends without an abort
+10-22 05:14:36.939  3054  3329 I picsh   : picsh: Picsh: android_main done; exiting the process for a clean next launch

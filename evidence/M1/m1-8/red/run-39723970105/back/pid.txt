@@ -1,0 +1,5 @@
+pid=3113
+ready=yes
+relaunch: the platform tore the activity down before Back could reach the app (one retry)
+pid=4138 (after relaunch)
+ready=yes

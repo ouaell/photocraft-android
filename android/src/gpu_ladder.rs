@@ -1,16 +1,35 @@
 //! GPU adapter preflight ladder (decision 011 amendment 3, user option 5).
 //!
-//! `apps/photocraft/src/gpu_startup.rs` probes backends headless and hands a
-//! validated device to the window; on Android the window comes from the eframe
-//! event loop, so the probe runs here, before `run_native`: each rung creates a
-//! real wgpu instance/adapter/device for exactly one backend, validates it with
-//! a small buffer round trip, and the first validating rung is handed to eframe
-//! via `egui_wgpu::WgpuSetup::Existing` (egui-wgpu 0.36.2 setup.rs: for
-//! `Existing`, `WgpuSetup::new_instance()` returns `existing.instance.clone()`,
-//! and the window surface is created from that same instance, so the surface,
-//! adapter and device stay mutually consistent). A rung that fails here is
-//! recorded verbatim and the next rung is tried; if every rung fails, eframe's
-//! own default setup runs and would fail the same way the desktop app would.
+//! What the desktop does (`apps/photocraft/src/gpu_startup.rs` at the pin
+//! d43db3e1): it computes a PLAN (which backend to use, from the preference,
+//! the crash marker and the OS) and configures eframe's OWN device creation
+//! (`configure()` mutates the `WgpuSetup::CreateNew` descriptor, `gpu_startup.rs:281`).
+//! It does NOT probe a device headless and it does NOT hand an existing device
+//! to eframe.
+//!
+//! What this file does is therefore a NEW mechanism, not the desktop's shape:
+//! on Android the window comes from the eframe event loop, so the preflight
+//! runs here, before `run_native`: each rung creates a real wgpu
+//! instance/adapter/device for exactly one backend, validates it with a small
+//! buffer round trip, and the first validating rung is handed to eframe via
+//! `egui_wgpu::WgpuSetup::Existing` (egui-wgpu 0.36.2 setup.rs: for `Existing`,
+//! `WgpuSetup::new_instance()` returns `existing.instance.clone()`, and the
+//! window surface is created from that same instance, so the surface, adapter
+//! and device stay mutually consistent). A rung that fails here is recorded
+//! verbatim and the next rung is tried; if every rung fails, eframe's own
+//! default setup runs - and then the device is created with egui's limits, NOT
+//! with `device_limits(adapter)`, which the shell says so in its device-request
+//! log line.
+//!
+//! What IS mirrored from the desktop: the crash-safe marker (the same
+//! `gpu-starting.json` name and place, the same "the previous start died while
+//! starting" meaning, the same file lock) and the ladder ORDER (Vulkan, then
+//! GL - the desktop's chain for Linux/Unix, minus DX12/Metal, which do not
+//! exist on Android). The deviations from the desktop (no plan from the
+//! preferences, no CPU rung, no `--safe-gpu`, the "skip the rung named in the
+//! marker" rule instead of the desktop's chain-down) are recorded as an open
+//! PORT-SPEC row (STATE.md SU-8) - the desktop's Sentinel state machine is a
+//! later milestone.
 //!
 //! Crash safety (SU-8, minimal M1 form): each probe writes a marker file in the
 //! config directory (upstream's `gpu-starting.json` name and location; the M1

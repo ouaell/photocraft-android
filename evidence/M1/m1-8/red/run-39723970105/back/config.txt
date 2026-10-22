@@ -1,0 +1,1 @@
+rung=back package=io.github.ouaell.picsh apk=android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk scenario=back

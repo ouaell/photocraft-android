@@ -1,0 +1,10 @@
+10-22 05:11:30.543  3113  3317 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 05:11:30.584  3113  3317 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 05:11:30.742  3113  3317 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan
+10-22 05:11:31.083  3113  3317 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192, max_buffer_size: 268435456, max_storage_buffer_binding_size: 134217728 }; device_limits { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824 }; adapter { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824, max_storage_buffer_binding_size: 1073741824 }
+10-22 05:11:44.618  4138  4212 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: probing vulkan
+10-22 05:11:45.225  4138  4212 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: rung vulkan: adapter SwiftShader Device (Subzero) device_type Cpu backend Vulkan driver SwiftShader driver 
+10-22 05:11:45.347  4138  4212 I picsh   : picsh::gpu_ladder: Picsh: gpu ladder: selected vulkan
+10-22 05:11:45.905  4138  4212 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192, max_buffer_size: 268435456, max_storage_buffer_binding_size: 134217728 }; device_limits { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824 }; adapter { max_texture_dimension_2d: 8192, max_buffer_size: 1073741824, max_storage_buffer_binding_size: 1073741824 }
+10-22 05:11:57.064  4138  4212 I picsh   : picsh: Picsh: Back key pressed; asking the app to close
+10-22 05:11:57.073  4138  4212 I picsh   : picsh::services: Picsh: leaving: the app quits; the process ends

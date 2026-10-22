@@ -185,12 +185,16 @@ fn run(app: winit::platform::android::activity::AndroidApp) {
                 // the preflight ladder with exactly gpu_canvas::device_limits(adapter)
                 // (SU-9) and egui runs on that same device through WgpuSetup::Existing;
                 // a degenerate adapter (api-31's SwiftShader Vulkan) is rejected by
-                // the ladder, so no clamped device is ever created.
+                // the ladder, so no clamped device is ever created. When NO rung
+                // validated, eframe created the device with its OWN descriptor
+                // (egui's limits, not device_limits) - the log line says which of
+                // the two it was, so the record cannot be misread.
                 let helper = photocraft_ui_egui::gpu_canvas::device_limits(&rs.adapter);
                 let defaults = eframe::wgpu::Limits::default();
                 let a = rs.adapter.limits();
                 log::info!(
-                    "Picsh: device request: Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}",
+                    "Picsh: device request: created_by={}; Limits::default {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}; device_limits {{ max_texture_dimension_2d: {}, max_buffer_size: {} }}; adapter {{ max_texture_dimension_2d: {}, max_buffer_size: {}, max_storage_buffer_binding_size: {} }}",
+                    if ladder.setup.is_some() { "ladder (device_limits)" } else { "eframe default (no ladder rung validated)" },
                     defaults.max_texture_dimension_2d, defaults.max_buffer_size, defaults.max_storage_buffer_binding_size,
                     helper.max_texture_dimension_2d, helper.max_buffer_size,
                     a.max_texture_dimension_2d, a.max_buffer_size, a.max_storage_buffer_binding_size

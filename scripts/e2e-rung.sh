@@ -22,7 +22,32 @@ OUT="rungs/$RUNG"
 mkdir -p "$OUT"
 echo "rung=$RUNG package=$PKG apk=$APK scenario=$SCENARIO" | tee "$OUT/config.txt"
 
-fatal='FATAL EXCEPTION|ANR in .|Fatal signal 11|signal 11|panicked at|JNI DETECTED ERROR|UnsatisfiedLinkError|Validation Error|Device lost|StrictMode|invalid local reference'
+# The fatal patterns of the app's own log: the crash classes PLAN 5.3 names
+# (FATAL, ANR, a Rust panic, a wgpu validation error, a JNI reference error)
+# plus the ways a process can DIE - "Fatal signal N" for any signal (the
+# emulator's kill of a crashing app), the low-memory killer and the activity
+# manager's kill. R-D: with only "Fatal signal 11" in the list, a rendering
+# rung stayed green while the app had been killed with SIGABRT/SIGKILL.
+fatal='FATAL EXCEPTION|ANR in .|Fatal signal [0-9]+|signal 11|panicked at|JNI DETECTED ERROR|UnsatisfiedLinkError|Validation Error|Device lost|StrictMode|invalid local reference|lowmemorykiller|am_kill'
+
+# The pid-scoped logcat of one pid, into a file, and a grep on that file.
+# `adb logcat ... | grep -q` cannot be used: grep exits on the first match,
+# adb dies with SIGPIPE and the pipeline fails under `set -o pipefail`, so a
+# big log would look like "not found" (R-D measured it with a 725 KB log).
+LAST_LOG="$OUT/last-pid.log"
+pid_log() {   # pid_log <pid> - that pid's logcat in $LAST_LOG
+    adb logcat -d --pid="$1" -v threadtime > "$LAST_LOG" 2>/dev/null || true
+}
+log_has() {   # log_has <pattern>... - do the patterns occur in the last log?
+    [ -s "$LAST_LOG" ] || return 1
+    grep -aq "$@" "$LAST_LOG"
+}
+app_pids_from_log() {  # the pids that logged with the app's tag, from a dump
+    # The threadtime format is "date time pid tid LEVEL TAG: message"; the tag
+    # is matched by its shape, not by a field index, so the extraction does not
+    # depend on the exact spacing.
+    awk '/ [A-Z] picsh +:/ {print $3}' "$1" 2>/dev/null | grep -E '^[0-9]+$' | sort -u
+}
 
 # Process bookkeeping. `pidof` can answer with SEVERAL pids for the package
 # (run 39672720132 rungs/crash: "3767 3900"). The old code stripped the
@@ -163,7 +188,8 @@ wait_ready() {
     for attempt in 1 2; do
         for i in $(seq 1 45); do
             for p in $PIDS; do
-                if adb logcat -d --pid="$p" -v time 2>/dev/null | grep -aq "Picsh: device request: "; then
+                pid_log "$p"
+                if log_has "Picsh: device request: "; then
                     READY="yes"
                     READY_PID="$p"
                     break
@@ -171,7 +197,8 @@ wait_ready() {
             done
             [ -n "$READY" ] && break
             for p in $PIDS; do
-                if adb logcat -d --pid="$p" -v time 2>/dev/null | grep -aq "APP_CMD_DESTROY"; then
+                pid_log "$p"
+                if log_has "APP_CMD_DESTROY"; then
                     TORN_DOWN="yes"
                     break
                 fi
@@ -266,8 +293,8 @@ if [ "$SCENARIO" = "crash" ]; then
     for attempt in 1 2; do
         for i in $(seq 1 20); do
             for p in $PIDS; do
-                if adb logcat -d --pid="$p" -v threadtime 2>/dev/null \
-                    | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
+                pid_log "$p"
+                if log_has -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
                              -e "Rust panic: PHOTOCRAFT_TEST_CRASH"; then
                     CRASHED="$p"
                     break
@@ -278,17 +305,20 @@ if [ "$SCENARIO" = "crash" ]; then
             # (run 39672720132 rungs/crash: the pid list was mangled, so the
             # pid-scoped capture saw nothing). The whole logcat is the fallback:
             # the pid of the matching line (threadtime puts it in field 3) is
-            # the process that gets judged. It is a full dump, so it runs every
-            # few rounds only.
+            # the process that gets judged - but ONLY a line of the app's own
+            # logger (the tag "picsh"), so a foreign process cannot be picked
+            # up as the app's crash. It is a full dump, so it runs every few
+            # rounds only.
             if [ $((i % 5)) -eq 0 ]; then
                 CRASHED="$(adb logcat -d -v threadtime 2>/dev/null \
                     | grep -a -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
                             -e "Rust panic: PHOTOCRAFT_TEST_CRASH" \
-                    | awk '{print $3}' | grep -E '^[0-9]+$' | head -1)"
+                    | awk '/ [A-Z] picsh +:/ {print $3}' | grep -E '^[0-9]+$' | head -1)"
                 [ -n "$CRASHED" ] && break
             fi
             for p in $PIDS; do
-                if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "APP_CMD_DESTROY"; then
+                pid_log "$p"
+                if log_has "APP_CMD_DESTROY"; then
                     TORN_DOWN="yes"
                     break
                 fi
@@ -317,11 +347,11 @@ if [ "$SCENARIO" = "crash" ]; then
     done
     if [ -z "$CRASHED" ]; then
         # One last full-logcat pass (the crashed process may have died before
-        # pidof ever listed it).
+        # pidof ever listed it). Only a line of the app's own logger counts.
         CRASHED="$(adb logcat -d -v threadtime 2>/dev/null \
             | grep -a -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
                     -e "Rust panic: PHOTOCRAFT_TEST_CRASH" \
-            | awk '{print $3}' | grep -E '^[0-9]+$' | head -1)"
+            | awk '/ [A-Z] picsh +:/ {print $3}' | grep -E '^[0-9]+$' | head -1)"
     fi
     if [ -z "$CRASHED" ]; then
         red_evidence
@@ -343,6 +373,12 @@ if [ "$SCENARIO" = "crash" ]; then
     PID1="$CRASHED"
 else
     wait_ready
+    # The rendering rung must have reached the app's own ready marker: without
+    # it the parity check below would only look at the device-wide log (R-D).
+    if [ -z "$READY" ]; then
+        red_evidence
+        red_exit scenario "scenario.red" "the app never reached its ready marker (no 'Picsh: device request: ' line in the app's log)"
+    fi
     PID1="$PID"
     if [ "$SCENARIO" = "back" ]; then
         # The boot-1 process must be healthy BEFORE the Back press: a fatal
@@ -375,14 +411,16 @@ else
             LEAVE_PID=""
             for i in $(seq 1 45); do
                 for p in $PIDS; do
-                    if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "Picsh: leaving: the app quits"; then
+                    pid_log "$p"
+                    if log_has "Picsh: leaving: the app quits"; then
                         LEAVE_PID="$p"
                         break
                     fi
                 done
                 [ -n "$LEAVE_PID" ] && break
                 for p in $PIDS; do
-                    if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "APP_CMD_DESTROY"; then
+                    pid_log "$p"
+                    if log_has "APP_CMD_DESTROY"; then
                         TORN_DOWN="yes"
                         break
                     fi
@@ -477,13 +515,34 @@ adb shell getconf PAGE_SIZE > "$OUT/pagesize.txt" 2>&1 || true
 ls -l "$OUT" | tee "$OUT/files.txt"
 
 adb logcat -d -t 200000 > "$OUT/logcat-full.txt"
-ORACLE_LOG="$OUT/logcat-full.txt"
-if [ -n "$PID" ]; then
-    if adb logcat -d --pid="$PID" -t 200000 > "$OUT/logcat-pid.txt"; then
-        ORACLE_LOG="$OUT/logcat-pid.txt"
-    fi
+# The oracle judges the app's OWN log, never the whole device log: a device-wide
+# fallback would let another process's fatal line (or the app's own line from a
+# previous boot) decide the verdict. If the pid-scoped capture fails, that is
+# a red, not a fallback (R-D).
+ORACLE_LOG="$OUT/logcat-pid.txt"
+if [ -z "$PID" ]; then
+    echo "ORACLE RED: no pid to judge" | tee "$OUT/oracle.red"
+    printf '{"rung":"%s","package":"%s","scenario":"%s","pid":"%s","oracle":"red"}\n' "$RUNG" "$PKG" "$SCENARIO" "$PID" > "$OUT/result.json"
+    finish
+    exit 1
+fi
+if ! adb logcat -d --pid="$PID" -t 200000 > "$ORACLE_LOG"; then
+    echo "ORACLE RED: the app's logcat could not be captured" | tee "$OUT/oracle.red"
+    printf '{"rung":"%s","package":"%s","scenario":"%s","pid":"%s","oracle":"red"}\n' "$RUNG" "$PKG" "$SCENARIO" "$PID" > "$OUT/result.json"
+    finish
+    exit 1
 fi
 echo "oracle-log=$ORACLE_LOG" >> "$OUT/pid.txt"
+
+# The judged process must still be ALIVE: a rung whose app died after painting
+# is not a working app (R-D: with only "Fatal signal 11" in the fatal list, a
+# rendering rung stayed green while the app had been killed).
+if ! pid_alive "$PID"; then
+    echo "ORACLE RED: the app's process (pid $PID) is no longer alive" | tee "$OUT/oracle.red"
+    printf '{"rung":"%s","package":"%s","scenario":"%s","pid":"%s","oracle":"red"}\n' "$RUNG" "$PKG" "$SCENARIO" "$PID" > "$OUT/result.json"
+    finish
+    exit 1
+fi
 
 if grep -qE "$fatal" "$ORACLE_LOG"; then
     echo "ORACLE RED in $ORACLE_LOG:" | tee "$OUT/oracle.red"

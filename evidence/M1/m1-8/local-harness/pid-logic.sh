@@ -143,19 +143,19 @@ check "capture_logs content" "$(tr '\n' '|' < "$OUT/logcat-boot1.txt")" "===== p
 
 # 7. the crash matcher must not fire on the "already fired once" line
 cat > "$LOGCAT_DIR/9999" <<'EOF'
-10-21 21:12:50.100  9999  9999 1234 I picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker /x); staying up
+10-21 21:12:50.100  9999  9999 I picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker /x); staying up
 EOF
 hit="$(adb logcat -d --pid=9999 -v threadtime 2>/dev/null | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" -e "Rust panic: PHOTOCRAFT_TEST_CRASH" && echo yes)"
 check "already-fired-once is NOT the crash" "$hit" ""
 
 cat > "$LOGCAT_DIR/9998" <<'EOF'
-10-21 21:12:50.100  9998  9998 1234 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
+10-21 21:12:50.100  9998  9998 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
 EOF
 hit="$(adb logcat -d --pid=9998 -v threadtime 2>/dev/null | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" -e "Rust panic: PHOTOCRAFT_TEST_CRASH" && echo yes)"
 check "knob line IS the crash" "$hit" "yes"
 
 cat > "$LOGCAT_DIR/9997" <<'EOF'
-10-21 21:12:50.100  9997  9997 1234 E picsh   : picsh: Picsh: Rust panic: PHOTOCRAFT_TEST_CRASH
+10-21 21:12:50.100  9997  9997 E picsh   : picsh: Picsh: Rust panic: PHOTOCRAFT_TEST_CRASH
 EOF
 hit="$(adb logcat -d --pid=9997 -v threadtime 2>/dev/null | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" -e "Rust panic: PHOTOCRAFT_TEST_CRASH" && echo yes)"
 check "panic line IS the crash" "$hit" "yes"

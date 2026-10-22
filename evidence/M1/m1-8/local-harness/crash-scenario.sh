@@ -82,18 +82,18 @@ reset_state() {
 
 # ---- case A: two pids, the crash event lands in the second one --------------
 reset_state
-printf '10-21 21:12:50.100  3767  3767 1234 I picsh   : picsh: Picsh: device request: Limits::default {}\n' > "$LOGCAT_DIR/3767"
+printf '10-21 21:12:50.100  3767  3767 I picsh   : picsh: Picsh: device request: Limits::default {}\n' > "$LOGCAT_DIR/3767"
 cat > "$STATE/crash_log" <<'EOF'
-10-21 21:12:50.200  3900  3900 1234 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
+10-21 21:12:50.200  3900  3900 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
 EOF
 echo 3900 > "$STATE/crash_pid"
 echo 2 > "$STATE/crash_at_logcat"
 printf '3767 3900\n' > "$STATE/pidof_1"
 printf '5100\n' > "$STATE/pidof_2"
-printf '10-21 21:13:10.100  5100  5100 1234 I picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker /x); staying up\n' > "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.200  5100  5100 1234 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }\n' >> "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.300  5100  5100 1234 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' >> "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.400  5100  5100 1234 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.100  5100  5100 I picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker /x); staying up\n' > "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.200  5100  5100 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.300  5100  5100 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.400  5100  5100 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' >> "$LOGCAT_DIR/5100"
 run_case "$OUTROOT/a"
 check "case A: the crash was found in the second pid" "$(cat "$OUTROOT/a/rungs/crash/scenario-boot1.txt" 2>/dev/null)" "scenario boot 1: forced crash observed in pid 3900, that pid is gone"
 check "case A: not red for a missing crash event" "$(has 'no PHOTOCRAFT_TEST_CRASH crash event' "$OUTROOT/a/rungs/crash/scenario.red")" "no"
@@ -102,7 +102,7 @@ check "case A: the relaunch is a new pid that reached the ready marker" "$(has '
 
 # ---- case B: no crash event at all -> the gate must be RED -------------------
 reset_state
-printf '10-21 21:12:50.100  3767  3767 1234 I picsh   : picsh: Picsh: device request: Limits::default {}\n' > "$LOGCAT_DIR/3767"
+printf '10-21 21:12:50.100  3767  3767 I picsh   : picsh: Picsh: device request: Limits::default {}\n' > "$LOGCAT_DIR/3767"
 printf '3767\n' > "$STATE/pidof_1"
 printf '5100\n' > "$STATE/pidof_2"
 run_case "$OUTROOT/b"
@@ -110,7 +110,7 @@ check "case B: the gate is red without a crash event" "$(has 'no PHOTOCRAFT_TEST
 
 # ---- case C: the "already fired once" line alone must NOT count as a crash ---
 reset_state
-printf '10-21 21:12:50.100  3767  3767 1234 I picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker /x); staying up\n' > "$LOGCAT_DIR/3767"
+printf '10-21 21:12:50.100  3767  3767 I picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH already fired once (marker /x); staying up\n' > "$LOGCAT_DIR/3767"
 printf '3767\n' > "$STATE/pidof_1"
 printf '5100\n' > "$STATE/pidof_2"
 run_case "$OUTROOT/c"
@@ -120,30 +120,30 @@ check "case C: 'already fired once' alone is red" "$(has 'no PHOTOCRAFT_TEST_CRA
 #      not among the pids the script knows -> only the whole-logcat fallback
 #      can find it. The package is gone (the crash took it down).
 reset_state
-printf '10-21 21:12:50.100  4700  4700 1234 E picsh   : picsh: Picsh: Rust panic: PHOTOCRAFT_TEST_CRASH\n' > "$LOGCAT_DIR/4700"
+printf '10-21 21:12:50.100  4700  4700 E picsh   : picsh: Picsh: Rust panic: PHOTOCRAFT_TEST_CRASH\n' > "$LOGCAT_DIR/4700"
 printf '\n' > "$STATE/pidof_1"
 printf '5100\n' > "$STATE/pidof_2"
-printf '10-21 21:13:10.200  5100  5100 1234 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }\n' > "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.300  5100  5100 1234 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' >> "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.400  5100  5100 1234 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.200  5100  5100 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }\n' > "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.300  5100  5100 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.400  5100  5100 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' >> "$LOGCAT_DIR/5100"
 run_case "$OUTROOT/d"
 check "case D: the full-logcat fallback finds the crash" "$(cat "$OUTROOT/d/rungs/crash/scenario-boot1.txt" 2>/dev/null)" "scenario boot 1: forced crash observed in pid 4700, that pid is gone"
 
 # ---- case E: the platform tore the activity down before the knob could fire;
 #      the script must force-stop, relaunch and find the crash in the NEW boot.
 reset_state
-printf '10-21 21:12:50.100  3767  3767 1234 V threaded_app: APP_CMD_DESTROY\n' > "$LOGCAT_DIR/3767"
+printf '10-21 21:12:50.100  3767  3767 V threaded_app: APP_CMD_DESTROY\n' > "$LOGCAT_DIR/3767"
 cat > "$STATE/crash_log" <<'EOF'
-10-21 21:12:50.100  4800  4800 1234 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
+10-21 21:12:50.100  4800  4800 E picsh   : picsh: Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now
 EOF
 echo 4800 > "$STATE/crash_pid"
 echo 3 > "$STATE/crash_at_logcat"
 printf '3767\n' > "$STATE/pidof_1"
 printf '4800\n' > "$STATE/pidof_2"
 printf '5100\n' > "$STATE/pidof_3"
-printf '10-21 21:13:10.200  5100  5100 1234 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }\n' > "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.300  5100  5100 1234 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' >> "$LOGCAT_DIR/5100"
-printf '10-21 21:13:10.400  5100  5100 1234 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.200  5100  5100 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }\n' > "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.300  5100  5100 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' >> "$LOGCAT_DIR/5100"
+printf '10-21 21:13:10.400  5100  5100 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' >> "$LOGCAT_DIR/5100"
 run_case "$OUTROOT/e"
 check "case E: the torn-down boot is relaunched and the crash is found" "$(cat "$OUTROOT/e/rungs/crash/scenario-boot1.txt" 2>/dev/null)" "scenario boot 1: forced crash observed in pid 4800, that pid is gone"
 check "case E: the relaunch is recorded" "$(has 'the platform tore the activity down' "$OUTROOT/e/rungs/crash/pid.txt")" "yes"

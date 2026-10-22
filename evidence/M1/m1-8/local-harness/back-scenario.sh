@@ -80,23 +80,23 @@ run_case() {
 reset_state() {
   rm -f "$STATE"/* "$LOGCAT_DIR"/*
   echo 0 > "$STATE/launches"
-  printf '10-21 21:13:20.300  5100  5100 1234 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' > "$STATE/sysinfo"
-  printf '10-21 21:13:20.400  5100  5100 1234 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' > "$STATE/ladder"
+  printf '10-21 21:13:20.300  5100  5100 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' > "$STATE/sysinfo"
+  printf '10-21 21:13:20.400  5100  5100 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' > "$STATE/ladder"
 }
 
-BOOT='10-21 21:12:50.100  PID  PID 1234 I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }'
+BOOT='10-21 21:12:50.100  PID  PID I picsh   : picsh: Picsh: device request: Limits::default { max_texture_dimension_2d: 8192 }'
 boot_log() { echo "$BOOT" | sed "s/PID/$1/g"; }
 
 # ---- case A: two pids; the leave line is in the SECOND one -------------------
 reset_state
 boot_log 3767 > "$STATE/boot_log_1"
-printf '10-21 21:13:01.671  3900  3900 1234 I picsh   : picsh: Picsh: leaving: the app quits; the process ends\n' > "$STATE/leave_log"
+printf '10-21 21:13:01.671  3900  3900 I picsh   : picsh: Picsh: leaving: the app quits; the process ends\n' > "$STATE/leave_log"
 echo 3900 > "$STATE/leave_pid_1"
 printf '3767 3900\n' > "$STATE/pidof_1"
 printf '5100\n' > "$STATE/pidof_2"
 boot_log 5100 > "$STATE/boot_log_2"
-printf '10-21 21:13:20.300  5100  5100 1234 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' > "$STATE/sysinfo"
-printf '10-21 21:13:20.400  5100  5100 1234 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' > "$STATE/ladder"
+printf '10-21 21:13:20.300  5100  5100 I picsh   : picsh: Picsh: SystemInfo: Image compositor: CPU\n' > "$STATE/sysinfo"
+printf '10-21 21:13:20.400  5100  5100 I picsh   : picsh: Picsh: gpu ladder: selected vulkan\n' > "$STATE/ladder"
 cat "$STATE/sysinfo" "$STATE/ladder" >> "$STATE/boot_log_2"
 run_case "$OUTROOT/a"
 check "case A: the leave line was found in the second pid" "$(cat "$OUTROOT/a/rungs/back/scenario-boot1.txt" 2>/dev/null)" "scenario boot 1: Back pressed, pid 3900 exited cleanly"
@@ -115,10 +115,10 @@ check "case B: the gate is red without a leave line" "$(has 'no leave line in th
 #      script must force-stop, relaunch, press Back again and find the leave.
 reset_state
 # launch 1: torn down, the app never leaves
-printf '10-21 21:12:50.100  3767  3767 1234 V threaded_app: APP_CMD_DESTROY\n' > "$STATE/boot_log_1"
+printf '10-21 21:12:50.100  3767  3767 V threaded_app: APP_CMD_DESTROY\n' > "$STATE/boot_log_1"
 # launch 2 (after the force-stop relaunch): the app leaves on Back
 boot_log 4800 > "$STATE/boot_log_2"
-printf '10-21 21:13:20.671  4800  4800 1234 I picsh   : picsh: Picsh: leaving: the app quits; the process ends\n' > "$STATE/leave_log"
+printf '10-21 21:13:20.671  4800  4800 I picsh   : picsh: Picsh: leaving: the app quits; the process ends\n' > "$STATE/leave_log"
 echo 4800 > "$STATE/leave_pid_2"
 printf '3767\n' > "$STATE/pidof_1"
 printf '4800\n' > "$STATE/pidof_2"
@@ -135,10 +135,10 @@ check "case C: the relaunch reached the ready marker" "$(has 'ready=yes' "$OUTRO
 #      script must force-stop, relaunch, press Back again and find the leave.
 reset_state
 # launch 1: ready, then torn down
-printf '%s\n10-21 21:12:51.100  3767  3767 1234 V threaded_app: APP_CMD_DESTROY\n' "$(boot_log 3767)" > "$STATE/boot_log_1"
+printf '%s\n10-21 21:12:51.100  3767  3767 V threaded_app: APP_CMD_DESTROY\n' "$(boot_log 3767)" > "$STATE/boot_log_1"
 # launch 2 (after the force-stop relaunch): the app leaves on Back
 boot_log 4800 > "$STATE/boot_log_2"
-printf '10-21 21:13:20.671  4800  4800 1234 I picsh   : picsh: Picsh: leaving: the app quits; the process ends\n' > "$STATE/leave_log"
+printf '10-21 21:13:20.671  4800  4800 I picsh   : picsh: Picsh: leaving: the app quits; the process ends\n' > "$STATE/leave_log"
 echo 4800 > "$STATE/leave_pid_2"
 printf '3767\n' > "$STATE/pidof_1"
 printf '4800\n' > "$STATE/pidof_2"
@@ -152,7 +152,7 @@ check "case D: the relaunch is recorded" "$(has 'tore the activity down before B
 # ---- case E: the first boot died with a FATAL error; it must NOT be retried
 #      away (the fatal boot would be invisible to the oracle otherwise).
 reset_state
-printf '%s\n10-21 21:12:51.100  3767  3767 1234 F libc    : Fatal signal 11 (SIGSEGV), code 1, pid 3767\n' "$(boot_log 3767)" > "$STATE/boot_log_1"
+printf '%s\n10-21 21:12:51.100  3767  3767 F libc    : Fatal signal 11 (SIGSEGV), code 1, pid 3767\n' "$(boot_log 3767)" > "$STATE/boot_log_1"
 printf '3767\n' > "$STATE/pidof_1"
 printf '5100\n' > "$STATE/pidof_2"
 boot_log 5100 > "$STATE/boot_log_2"

@@ -1,0 +1,11 @@
+ok   - case A: the crash was found in the second pid (scenario boot 1: forced crash observed in pid 3900, that pid is gone)
+ok   - case A: not red for a missing crash event (no)
+ok   - case A: both pids are in the evidence file (2)
+ok   - case A: the relaunch is a new pid that reached the ready marker (yes)
+ok   - case B: the gate is red without a crash event (yes)
+ok   - case C: 'already fired once' alone is red (yes)
+ok   - case D: the full-logcat fallback finds the crash (scenario boot 1: forced crash observed in pid 4700, that pid is gone)
+ok   - case E: the torn-down boot is relaunched and the crash is found (scenario boot 1: forced crash observed in pid 4800, that pid is gone)
+ok   - case E: the relaunch is recorded (yes)
+
+ALL CRASH-SCENARIO CHECKS PASS

@@ -181,6 +181,11 @@ jobs:
           script: bash scripts/e2e-rung.sh default-api36 io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
 
       - name: 'api 34: Back press then relaunch (re-entry gate, decision 011 amendment 3)'
+        # `if: always()`: the re-entry gates must produce their own verdict even
+        # when an earlier rendering rung is red (run 39689236795: the Back and
+        # crash steps were skipped behind the red rungGles step, so their verdict
+        # was unknown). The job still fails if any step fails.
+        if: always()
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
           api-level: 34
@@ -191,6 +196,7 @@ jobs:
           script: bash scripts/e2e-rung.sh back io.github.ouaell.picsh android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk back
 
       - name: 'api 34: forced crash then relaunch (re-entry gate, decision 011 amendment 3)'
+        if: always()
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
           api-level: 34

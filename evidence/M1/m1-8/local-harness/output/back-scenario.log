@@ -1,0 +1,12 @@
+ok   - case A: the leave line was found in the second pid (scenario boot 1: Back pressed, pid 3900 exited cleanly)
+ok   - case A: the relaunch is green (yes)
+ok   - case B: the gate is red without a leave line (yes)
+ok   - case C: the torn-down boot is relaunched and the leave is found (scenario boot 1: Back pressed, pid 4800 exited cleanly)
+ok   - case C: the relaunch is recorded (yes)
+ok   - case C: the relaunch reached the ready marker (yes)
+ok   - case D: the torn-down activity is relaunched and the leave is found (scenario boot 1: Back pressed, pid 4800 exited cleanly)
+ok   - case D: the relaunch is recorded (yes)
+ok   - case E: a fatal first boot is red, not retried (yes)
+ok   - case E: the fatal boot is judged in the evidence file (yes)
+
+ALL BACK-SCENARIO CHECKS PASS

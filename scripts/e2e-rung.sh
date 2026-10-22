@@ -34,7 +34,7 @@ launch_and_log() {
     adb shell am start -n "$PKG/com.google.androidgamesdk.GameActivity" 2>&1 | tee -a "$OUT/am-start.log"
     local pids=""
     for i in $(seq 1 30); do
-        pids="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ')"
+        pids="$(pidof_list)"
         echo "$pids" | grep -q "[0-9]" && break
         pids=""
         sleep 2
@@ -44,40 +44,49 @@ launch_and_log() {
     PID="$(echo "$pids" | awk '{print $1}')"
 }
 
-pid_alive() {  # true (0) while the given pid is still in the package's process list
-    [ -n "$1" ] || return 1
-    adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q -w "$1"
+# The pid list of the package, on one line. `adb` itself is the only failure
+# source here, and a transport error must NOT be read as "the app is gone"
+# (that would turn an adb hiccup into a green gate): the error text of the last
+# `pidof` call is kept in ADB_ERR_FILE, and the liveness checks fail CLOSED
+# while it is not empty. (A file, not a variable: pidof_list runs inside a
+# command substitution, where a variable assignment would be lost.)
+ADB_ERR_FILE="$OUT/adb-error.txt"
+pidof_list() {
+    local out
+    out="$(adb shell pidof "$PKG" 2>"$ADB_ERR_FILE" | tr -d '\r' | tr '\n' ' ' | tr -s ' ')"
+    if ! grep -aq -e "device not found" -e "device offline" -e "error:" -e "no devices" "$ADB_ERR_FILE"; then
+        : > "$ADB_ERR_FILE"
+    fi
+    printf '%s' "$out"
 }
 
-pkg_alive() {  # true (0) while any process of the package is alive
-    adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q "[0-9]"
+adb_ok() {   # true (0) while no adb transport error was seen
+    [ ! -s "$ADB_ERR_FILE" ]
+}
+
+adb_error_text() {  # the adb error text, for the red message
+    tr '\n' ' ' < "$ADB_ERR_FILE" 2>/dev/null
+}
+
+pid_alive() {  # true (0) while the given pid is still in the package's process list
+    [ -n "$1" ] || return 1
+    pidof_list | grep -q -w "$1"
 }
 
 pid_gone() {   # true (0) once the given pid (default: the launched one) is gone
     local target="${1:-$PID}"
+    local i
     for i in $(seq 1 45); do
-        pid_alive "$target" || return 0
-        sleep 2
-    done
-    return 1
-}
-
-pids_gone() {   # true (0) once none of the given pids is alive (one shared 90s budget)
-    local p
-    for i in $(seq 1 45); do
-        local alive=0
-        for p in "$@"; do
-            pid_alive "$p" && alive=1
-        done
-        [ "$alive" = "0" ] && return 0
+        pid_alive "$target" || { adb_ok || return 2; return 0; }
         sleep 2
     done
     return 1
 }
 
 pkg_gone() {   # true (0) once no process of the package is alive
+    local i
     for i in $(seq 1 45); do
-        adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q "[0-9]" || return 0
+        pidof_list | grep -q "[0-9]" || { adb_ok || return 2; return 0; }
         sleep 2
     done
     return 1
@@ -169,7 +178,7 @@ wait_ready() {
             done
             [ -n "$TORN_DOWN" ] && break
             if [ -n "$PIDS" ]; then
-                if ! adb shell pidof "$PKG" 2>/dev/null | grep -q "[0-9]"; then
+                if ! pidof_list | grep -q "[0-9]"; then
                     break   # died without a marker -> relaunch below
                 fi
             fi
@@ -178,6 +187,14 @@ wait_ready() {
         [ -n "$READY" ] && break
         if [ "$attempt" = "1" ]; then
             echo "relaunch: the app never reached the ready marker (one retry; torn-down=$TORN_DOWN)" | tee -a "$OUT/pid.txt"
+            # A boot that died with a FATAL error must NOT be retried away: the
+            # oracle would then judge the retry and the fatal boot would be
+            # invisible. The boot's own log is judged here, before the relaunch.
+            capture_logs "$OUT/logcat-boot1.txt" $PIDS
+            if [ -s "$OUT/logcat-boot1.txt" ] && grep -aqE "$fatal" "$OUT/logcat-boot1.txt"; then
+                red_evidence
+                red_exit scenario "scenario.red" "the first boot died with a fatal error (judged in logcat-boot1.txt); not retried"
+            fi
             if [ -n "$TORN_DOWN" ]; then
                 # Keep the evidence of the torn-down boot: it is the only place
                 # the platform's teardown is visible.
@@ -282,6 +299,16 @@ if [ "$SCENARIO" = "crash" ]; then
         [ -n "$CRASHED" ] && break
         if [ "$attempt" = "1" ] && [ -n "$TORN_DOWN" ]; then
             echo "relaunch: the platform tore the activity down before the crash knob could fire (one retry)" | tee -a "$OUT/pid.txt"
+            # A boot that died with a FATAL error must not be retried away (the
+            # fatal boot would be invisible to the oracle). The forced crash
+            # itself is not a FATAL pattern (the shell's panic hook replaces
+            # the default "panicked at" message), and this path only runs when
+            # the knob did NOT fire.
+            capture_logs "$OUT/logcat-boot1.txt" $PIDS
+            if [ -s "$OUT/logcat-boot1.txt" ] && grep -aqE "$fatal" "$OUT/logcat-boot1.txt"; then
+                red_evidence
+                red_exit scenario "scenario.red" "the first boot died with a fatal error (judged in logcat-boot1.txt); not retried"
+            fi
             adb shell am force-stop "$PKG" 2>/dev/null || true
             launch_and_log
             echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
@@ -305,10 +332,12 @@ if [ "$SCENARIO" = "crash" ]; then
         red_exit scenario "scenario.red" "the crashed pid $CRASHED is still alive 90s after the forced crash"
     fi
     # No other process of the package may be left (the old check was package-wide).
-    if ! pkg_gone; then
-        red_evidence
-        red_exit scenario "scenario.red" "a process of $PKG is still alive after the forced crash (live pids: $(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' '))"
-    fi
+    pkg_gone
+    case $? in
+        0) ;;
+        2) red_evidence; red_exit scenario "scenario.red" "adb failed while checking that the crashed app ended ($(adb_error_text))" ;;
+        *) red_evidence; red_exit scenario "scenario.red" "a process of $PKG is still alive after the forced crash (live pids: $(pidof_list))" ;;
+    esac
     capture_logs "$OUT/logcat-boot1.txt" $PIDS
     echo "scenario boot 1: forced crash observed in pid $CRASHED, that pid is gone" | tee "$OUT/scenario-boot1.txt"
     PID1="$CRASHED"
@@ -316,6 +345,13 @@ else
     wait_ready
     PID1="$PID"
     if [ "$SCENARIO" = "back" ]; then
+        # The boot-1 process must be healthy BEFORE the Back press: a fatal
+        # error there is the app's own, and it must not be retried away.
+        capture_logs "$OUT/logcat-boot1.txt" $PIDS
+        if [ -s "$OUT/logcat-boot1.txt" ] && grep -aqE "$fatal" "$OUT/logcat-boot1.txt"; then
+            red_evidence
+            red_exit scenario "scenario.red" "the first boot died with a fatal error (judged in logcat-boot1.txt)"
+        fi
         # Adapter/first-frame grace window, one UI-visible shot, then Back.
         # The Back key asks the app to close (the shell's wrapper), upstream's
         # leave guard runs, and the app leaves through the platform quit
@@ -357,6 +393,13 @@ else
             [ -n "$LEAVE_PID" ] && break
             if [ "$attempt" = "1" ] && [ -n "$TORN_DOWN" ]; then
                 echo "relaunch: the platform tore the activity down before Back could reach the app (one retry)" | tee -a "$OUT/pid.txt"
+                # A boot that died with a FATAL error must not be retried away
+                # (the fatal boot would be invisible to the oracle).
+                capture_logs "$OUT/logcat-boot1.txt" $PIDS
+                if [ -s "$OUT/logcat-boot1.txt" ] && grep -aqE "$fatal" "$OUT/logcat-boot1.txt"; then
+                    red_evidence
+                    red_exit scenario "scenario.red" "the first boot died with a fatal error (judged in logcat-boot1.txt); not retried"
+                fi
                 adb shell am force-stop "$PKG" 2>/dev/null || true
                 launch_and_log
                 echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
@@ -374,15 +417,30 @@ else
             red_evidence
             red_exit scenario "scenario.red" "no leave line in the log of the launched pid(s) ($PIDS)"
         fi
-        if ! pkg_gone; then
-            red_evidence
-            red_exit scenario "scenario.red" "pid $LEAVE_PID did not exit within 90s of Back (evidence: logcat-onred-*.txt, activities-onred.txt, screenshot-red.png)"
-        fi
+        pkg_gone
+        case $? in
+            0) ;;
+            2) red_evidence; red_exit scenario "scenario.red" "adb failed while checking that the app ended ($(adb_error_text))" ;;
+            *) red_evidence; red_exit scenario "scenario.red" "pid $LEAVE_PID did not exit within 90s of Back (evidence: logcat-onred-*.txt, activities-onred.txt, screenshot-red.png)" ;;
+        esac
         capture_logs "$OUT/logcat-boot1.txt" $PIDS
         grep -aq "Picsh: Rust panic" "$OUT/logcat-boot1.txt" && {
             red_evidence
             red_exit scenario "scenario.red" "the app panicked while leaving"
         }
+        # The part of the log BEFORE the leave line must be clean (it was
+        # judged above); what comes after it is the teardown of the leave
+        # itself: the shell's leave hook ends the process inside the
+        # Java->native frame, so ART reports it as "JNI DETECTED ERROR" +
+        # "Fatal signal 6" (decision 011 amendment 7). That noise is recorded,
+        # not judged - a clean leave path is a user decision, and until then
+        # the Back gate judges the app's own behaviour, not its teardown.
+        awk '/Picsh: leaving: the app quits/{exit} {print}' "$OUT/logcat-boot1.txt" > "$OUT/logcat-boot1-before-leave.txt"
+        if [ -s "$OUT/logcat-boot1-before-leave.txt" ] && grep -aqE "$fatal" "$OUT/logcat-boot1-before-leave.txt"; then
+            red_evidence
+            red_exit scenario "scenario.red" "the app logged a fatal error before it left (judged in logcat-boot1-before-leave.txt)"
+        fi
+        grep -aE "$fatal" "$OUT/logcat-boot1.txt" > "$OUT/boot1-fatal.txt" || true
         echo "scenario boot 1: Back pressed, pid $LEAVE_PID exited cleanly" | tee "$OUT/scenario-boot1.txt"
         PID1="$LEAVE_PID"
     fi
@@ -390,6 +448,13 @@ fi
 
 # ---- boot 2 for the re-entry scenarios --------------------------------------
 if [ "$SCENARIO" != "none" ]; then
+    # The scenario arm must have run: a dropped or misspelled scenario
+    # argument would otherwise turn the re-entry gate into an ordinary
+    # rendering rung that reports green without testing anything.
+    [ -s "$OUT/scenario-boot1.txt" ] || {
+        red_evidence
+        red_exit scenario "scenario.red" "the scenario arm did not run (no scenario-boot1.txt): the re-entry gate was not exercised"
+    }
     launch_and_log
     echo "pid=$PID (relaunch)" | tee -a "$OUT/pid.txt"
     [ -n "$PID" ] && [ "$PID" != "$PID1" ] || {

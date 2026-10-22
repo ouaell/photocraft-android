@@ -110,7 +110,13 @@ jobs:
           APK_CRASH_REL="app/build/outputs/apk/rungCrash/release/app-rungCrash-release-unsigned.apk"
           echo "source sets: app/src/rungGlesDebug/assets + app/src/rungCpuDebug/assets + app/src/rungCrashDebug/assets only (<flavor><BuildType> debug variants merge them)"
           for apk in "$APK_DEBUG" "$APK_CRASH_DEBUG"; do
-            if unzip -l "$apk" | grep -q "$KNOBS"; then
+            # The listing goes to a file first: `unzip -l | grep -q` would let
+            # grep exit on the first match, kill unzip with SIGPIPE and make the
+            # pipeline fail under `set -o pipefail` - the release branch below
+            # would then read a release APK that DOES bundle the knobs as
+            # "absent".
+            unzip -l "$apk" > knobs-listing.txt
+            if grep -q "$KNOBS" knobs-listing.txt; then
               echo "PASS $apk: $KNOBS present (debug-only by design)" | tee -a knobs-audit.log
             else
               echo "FAIL $apk: $KNOBS MISSING - debug source set not bundled" | tee -a knobs-audit.log
@@ -118,7 +124,8 @@ jobs:
             fi
           done
           for apk in "$APK_GLES_REL" "$APK_DEFAULT_REL" "$APK_CRASH_REL"; do
-            if unzip -l "$apk" | grep -q "$KNOBS"; then
+            unzip -l "$apk" > knobs-listing.txt
+            if grep -q "$KNOBS" knobs-listing.txt; then
               echo "FAIL $apk: $KNOBS present - release must never bundle knobs" | tee -a knobs-audit.log
               exit 1
             else
@@ -130,7 +137,13 @@ jobs:
         run: |
           set -o pipefail
           BT="$(ls -d "$ANDROID_HOME/build-tools/"* | sort | tail -1)/zipalign"
-          for apk in android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk android/app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk; do
+          # Every APK the CI ships is checked, not only the default pair: the
+          # rungCrash pair is part of the re-entry gate (decision 011 amendment 3).
+          for apk in \
+            android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk \
+            android/app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk \
+            android/app/build/outputs/apk/rungCrash/debug/app-rungCrash-debug.apk \
+            android/app/build/outputs/apk/rungCrash/release/app-rungCrash-release-unsigned.apk; do
             echo "zipalign -c -P 16 4 $apk" | tee -a zipalign.txt
             "$BT" -c -P 16 4 "$apk" | tee -a zipalign.txt
           done
@@ -150,4 +163,6 @@ jobs:
             zipalign.txt
             android/app/build/outputs/apk/rungDefault/debug/app-rungDefault-debug.apk
             android/app/build/outputs/apk/rungDefault/release/app-rungDefault-release-unsigned.apk
+            android/app/build/outputs/apk/rungCrash/debug/app-rungCrash-debug.apk
+            android/app/build/outputs/apk/rungCrash/release/app-rungCrash-release-unsigned.apk
           if-no-files-found: warn

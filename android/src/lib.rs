@@ -28,10 +28,19 @@ use log::LevelFilter;
 /// process, so a finished run (Back key, or a caught failure) cannot run eframe
 /// again in the same process; this entry therefore ends the process explicitly
 /// below, and Android starts the next activity launch in a fresh process with a
-/// clean GPU ladder. The run ends without manual state to flush: preferences
-/// persist through eframe's own `save_and_destroy` on loop end, and the M1
-/// shell wires no autosave service (`services.autosave` is None - the pinned
-/// ui-egui autosave runs only where that service is set).
+/// clean GPU ladder.
+///
+/// The run ends without manual state to flush: the preferences are written by
+/// UPSTREAM itself, per frame, through `services.save_prefs` (pinned
+/// `upstream/crates/ui-egui/src/prefs_ui.rs:427` -> `persist()`:466 ->
+/// `write_prefs`:519), and the M1 shell wires no autosave service
+/// (`services.autosave` is None - the pinned ui-egui autosave runs only where
+/// that service is set). eframe's own persistence is NOT involved: upstream
+/// implements no `eframe::App::save`, and eframe logs "Saving disabled: Failed
+/// to find path to data_dir" on Android. A pending upstream save RETRY
+/// (prefs_ui.rs:492-513) is lost by the exit - the write itself is atomic
+/// (`services.rs` writes through a temp file), so only a failed write is at
+/// risk, and the next launch re-persists the changed revision.
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     // Panic must never unwind into Java frames (eframe-android-shell skill).
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(app)));
@@ -244,7 +253,10 @@ fn maybe_test_crash(config_dir: &std::path::Path) {
         return;
     }
     if let Err(e) = std::fs::write(&marker, b"PHOTOCRAFT_TEST_CRASH\n") {
-        log::warn!("Picsh: could not write the crash marker {}: {e}", marker.display());
+        // Without the marker the knob would fire again on the relaunch, and the
+        // re-entry gate could never be green - so the crash is skipped instead.
+        log::warn!("Picsh: could not write the crash marker {e}; the forced crash is skipped");
+        return;
     }
     log::error!("Picsh: PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now");
     std::panic::panic_any("PHOTOCRAFT_TEST_CRASH");

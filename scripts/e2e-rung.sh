@@ -49,6 +49,10 @@ pid_alive() {  # true (0) while the given pid is still in the package's process 
     adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q -w "$1"
 }
 
+pkg_alive() {  # true (0) while any process of the package is alive
+    adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' ' | grep -q "[0-9]"
+}
+
 pid_gone() {   # true (0) once the given pid (default: the launched one) is gone
     local target="${1:-$PID}"
     for i in $(seq 1 45); do
@@ -128,9 +132,25 @@ red_evidence() {
 # The marker is looked for in EVERY pid of the package (pidof can answer with
 # several), and PID is set to the pid that actually produced it, so the oracle
 # judges the process that really ran the app.
+#
+# Two teardown shapes, both the platform's doing (no app-side defect; the app
+# process is alive and healthy in both):
+#   (a) the process dies with the activity (run 39548313457 rungs/cpu) - the
+#       relaunch starts a new process and the marker arrives;
+#   (b) the ACTIVITY is torn down while the PROCESS stays alive (run
+#       39689236795 rungs/gles: `APP_CMD_DESTROY` ~50 ms after `Resume`, the
+#       window/surface was never created, so the app can never reach the ready
+#       marker in that process). Here `am start` alone cannot recover: the
+#       system hands the intent to the dead top-most instance ("Activity not
+#       started, intent has been delivered to currently running top-most
+#       instance") and the same zombie process is returned. The recovery must
+#       therefore force-stop the package first, so the retry is a fresh process
+#       AND a fresh activity. The assertions are untouched: the judged pid must
+#       still produce the ready marker, the parity fields and the ladder record.
 wait_ready() {
     READY=""
     READY_PID=""
+    TORN_DOWN=""
     for attempt in 1 2; do
         for i in $(seq 1 45); do
             for p in $PIDS; do
@@ -141,6 +161,13 @@ wait_ready() {
                 fi
             done
             [ -n "$READY" ] && break
+            for p in $PIDS; do
+                if adb logcat -d --pid="$p" -v time 2>/dev/null | grep -aq "APP_CMD_DESTROY"; then
+                    TORN_DOWN="yes"
+                    break
+                fi
+            done
+            [ -n "$TORN_DOWN" ] && break
             if [ -n "$PIDS" ]; then
                 if ! adb shell pidof "$PKG" 2>/dev/null | grep -q "[0-9]"; then
                     break   # died without a marker -> relaunch below
@@ -150,9 +177,28 @@ wait_ready() {
         done
         [ -n "$READY" ] && break
         if [ "$attempt" = "1" ]; then
-            echo "relaunch: activity died before the ready marker (one retry)" | tee -a "$OUT/pid.txt"
+            echo "relaunch: the app never reached the ready marker (one retry; torn-down=$TORN_DOWN)" | tee -a "$OUT/pid.txt"
+            if [ -n "$TORN_DOWN" ]; then
+                # Keep the evidence of the torn-down boot: it is the only place
+                # the platform's teardown is visible.
+                {
+                    echo "=== the activity was destroyed while the process stayed alive ==="
+                    for p in $PIDS; do
+                        echo "--- pid $p"
+                        adb logcat -d --pid="$p" -v time 2>/dev/null
+                    done
+                    echo "--- dumpsys activity activities"
+                    adb shell dumpsys activity activities 2>/dev/null
+                } > "$OUT/torn-down-boot.txt" 2>&1
+            fi
+            # A torn-down activity with a living process cannot be revived by
+            # `am start` (the system delivers the intent to the dead top-most
+            # instance), so the package is stopped first: the retry is then a
+            # fresh process AND a fresh activity.
+            adb shell am force-stop "$PKG" 2>/dev/null || true
             launch_and_log
             echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
+            TORN_DOWN=""
         fi
     done
     [ -n "$READY_PID" ] && PID="$READY_PID"
@@ -177,41 +223,74 @@ if [ "$SCENARIO" = "crash" ]; then
     # No ready/relaunch logic here: a relaunch would consume the one-shot marker
     # and mask the scenario. The knob fires at the end of the creator closure.
     #
-    # Order matters: the death check comes FIRST (exactly as before), because
-    # the window in which no process of the package is alive is the moment the
-    # crash tore the app down; asking for the crash evidence afterwards still
-    # works (logcat keeps the buffer of a dead process), while the other order
-    # could miss that window.
+    # The gate (as before, in the same substance):
+    #   (a) the forced crash shows up in the log of a process of this package,
+    #   (b) that process is gone,
+    #   (c) no process of the package is left.
+    # The crash is matched on the CRASH event lines, never on the bare token -
+    # the relaunch logs the same token in "PHOTOCRAFT_TEST_CRASH already fired
+    # once" and must not be mistaken for the crash.
     #
-    # The gate: the forced crash must appear in the log of a process of this
-    # package, and that process must be gone afterwards. The crash is matched on
-    # the CRASH event lines, never on the bare token - the relaunch logs
-    # "PHOTOCRAFT_TEST_CRASH already fired once" (same token) and must not be
-    # mistaken for the crash.
-    if ! pkg_gone; then
-        red_evidence
-        red_exit scenario "scenario.red" "a process of $PKG is still alive after the forced crash (live pids: $(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' '))"
-    fi
+    # The crash event is looked for in the log of EVERY pid of the package:
+    # pidof can answer with several (run 39672720132 rungs/crash answered
+    # "3767 3900" and the old code concatenated them into one bogus pid, so the
+    # pid-scoped logcat was empty and this gate failed on a crash that HAD
+    # happened).
+    #
+    # The knob fires at the END of the creator closure, i.e. it needs a live
+    # window. If the platform tears the activity down before that (run
+    # 39689236795 rungs/gles: `APP_CMD_DESTROY` ~50 ms after `Resume`, the
+    # surface was never created), the knob can never fire in that process: the
+    # package is then stopped and relaunched once. A boot-1 retry is safe here -
+    # the one-shot marker is written by the knob itself, so a boot that never
+    # reached the creator closure cannot have consumed it.
     CRASHED=""
-    for i in $(seq 1 45); do
-        for p in $PIDS; do
-            if adb logcat -d --pid="$p" -v threadtime 2>/dev/null \
-                | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
-                         -e "Rust panic: PHOTOCRAFT_TEST_CRASH"; then
-                CRASHED="$p"
-                break
+    TORN_DOWN=""
+    for attempt in 1 2; do
+        for i in $(seq 1 20); do
+            for p in $PIDS; do
+                if adb logcat -d --pid="$p" -v threadtime 2>/dev/null \
+                    | grep -aq -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
+                             -e "Rust panic: PHOTOCRAFT_TEST_CRASH"; then
+                    CRASHED="$p"
+                    break
+                fi
+            done
+            [ -n "$CRASHED" ] && break
+            # The crashed process may have died before pidof ever listed it
+            # (run 39672720132 rungs/crash: the pid list was mangled, so the
+            # pid-scoped capture saw nothing). The whole logcat is the fallback:
+            # the pid of the matching line (threadtime puts it in field 3) is
+            # the process that gets judged. It is a full dump, so it runs every
+            # few rounds only.
+            if [ $((i % 5)) -eq 0 ]; then
+                CRASHED="$(adb logcat -d -v threadtime 2>/dev/null \
+                    | grep -a -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
+                            -e "Rust panic: PHOTOCRAFT_TEST_CRASH" \
+                    | awk '{print $3}' | grep -E '^[0-9]+$' | head -1)"
+                [ -n "$CRASHED" ] && break
             fi
+            for p in $PIDS; do
+                if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "APP_CMD_DESTROY"; then
+                    TORN_DOWN="yes"
+                    break
+                fi
+            done
+            [ -n "$TORN_DOWN" ] && break
+            sleep 2
         done
         [ -n "$CRASHED" ] && break
-        sleep 2
+        if [ "$attempt" = "1" ] && [ -n "$TORN_DOWN" ]; then
+            echo "relaunch: the platform tore the activity down before the crash knob could fire (one retry)" | tee -a "$OUT/pid.txt"
+            adb shell am force-stop "$PKG" 2>/dev/null || true
+            launch_and_log
+            echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
+            TORN_DOWN=""
+        fi
     done
     if [ -z "$CRASHED" ]; then
-        # The crashed process may have died before pidof listed it (run
-        # 39672720132 rungs/crash: pidof answered with two pids and the old code
-        # concatenated them into one bogus pid, so the pid-scoped logcat was
-        # empty and this gate failed on a crash that had happened). Fall back to
-        # the whole logcat, take the pid out of the matching line (threadtime
-        # puts it in field 3) and judge THAT process.
+        # One last full-logcat pass (the crashed process may have died before
+        # pidof ever listed it).
         CRASHED="$(adb logcat -d -v threadtime 2>/dev/null \
             | grep -a -e "PHOTOCRAFT_TEST_CRASH knob: forcing the one-shot crash now" \
                     -e "Rust panic: PHOTOCRAFT_TEST_CRASH" \
@@ -225,6 +304,11 @@ if [ "$SCENARIO" = "crash" ]; then
         red_evidence
         red_exit scenario "scenario.red" "the crashed pid $CRASHED is still alive 90s after the forced crash"
     fi
+    # No other process of the package may be left (the old check was package-wide).
+    if ! pkg_gone; then
+        red_evidence
+        red_exit scenario "scenario.red" "a process of $PKG is still alive after the forced crash (live pids: $(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | tr '\n' ' ' | tr -s ' '))"
+    fi
     capture_logs "$OUT/logcat-boot1.txt" $PIDS
     echo "scenario boot 1: forced crash observed in pid $CRASHED, that pid is gone" | tee "$OUT/scenario-boot1.txt"
     PID1="$CRASHED"
@@ -233,25 +317,58 @@ else
     PID1="$PID"
     if [ "$SCENARIO" = "back" ]; then
         # Adapter/first-frame grace window, one UI-visible shot, then Back.
-        sleep 10
-        adb exec-out screencap -p > "$OUT/screenshot-boot1.png"
-        adb shell input keyevent 4 2>&1 | tee "$OUT/back.log"
         # The Back key asks the app to close (the shell's wrapper), upstream's
         # leave guard runs, and the app leaves through the platform quit
         # (`Services::quit` -> the shell's leave hook). On Android the eframe
         # run itself cannot return (winit's Android event loop never exits on
         # its own), so the leave evidence is the shell's own line, not
         # "efrace loop returned cleanly".
+        #
+        # The leave is watched for in EVERY pid of the package (pidof can answer
+        # with several). If the platform tore the activity down instead of the
+        # app leaving (run 39689236795 rungs/gles: `APP_CMD_DESTROY` ~50 ms
+        # after `Resume`, the surface never created), the Back key can never
+        # reach the app: the package is then stopped and the whole boot-1
+        # sequence is repeated once with a fresh process and a fresh activity.
         LEAVE_PID=""
-        for i in $(seq 1 45); do
-            for p in $PIDS; do
-                if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "Picsh: leaving: the app quits"; then
-                    LEAVE_PID="$p"
-                    break
-                fi
+        TORN_DOWN=""
+        for attempt in 1 2; do
+            sleep 10
+            adb exec-out screencap -p > "$OUT/screenshot-boot1.png"
+            adb shell input keyevent 4 2>&1 | tee "$OUT/back.log"
+            LEAVE_PID=""
+            for i in $(seq 1 45); do
+                for p in $PIDS; do
+                    if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "Picsh: leaving: the app quits"; then
+                        LEAVE_PID="$p"
+                        break
+                    fi
+                done
+                [ -n "$LEAVE_PID" ] && break
+                for p in $PIDS; do
+                    if adb logcat -d --pid="$p" -v threadtime 2>/dev/null | grep -aq "APP_CMD_DESTROY"; then
+                        TORN_DOWN="yes"
+                        break
+                    fi
+                done
+                [ -n "$TORN_DOWN" ] && break
+                sleep 2
             done
             [ -n "$LEAVE_PID" ] && break
-            sleep 2
+            if [ "$attempt" = "1" ] && [ -n "$TORN_DOWN" ]; then
+                echo "relaunch: the platform tore the activity down before Back could reach the app (one retry)" | tee -a "$OUT/pid.txt"
+                adb shell am force-stop "$PKG" 2>/dev/null || true
+                launch_and_log
+                echo "pid=$PID (after relaunch)" | tee -a "$OUT/pid.txt"
+                wait_ready
+                if [ -z "$READY" ]; then
+                    red_evidence
+                    red_exit scenario "scenario.red" "the relaunch never reached the ready marker"
+                fi
+                TORN_DOWN=""
+                continue
+            fi
+            break
         done
         if [ -z "$LEAVE_PID" ]; then
             red_evidence

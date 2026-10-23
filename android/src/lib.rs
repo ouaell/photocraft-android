@@ -21,6 +21,9 @@ mod guard;
 use log::LevelFilter;
 
 #[cfg(target_os = "android")]
+use libc;
+
+#[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 /// GameActivity entry (android-activity 0.6.1 calls this on its own main thread).
 ///
@@ -48,7 +51,7 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
         log::error!("Picsh: android_main panicked; the activity ends without an abort");
     }
     log::info!("Picsh: android_main done; exiting the process for a clean next launch");
-    std::process::exit(0);
+    libc::_exit(0);
 }
 
 /// The shell's app wrapper: it adds the Android Back key to the upstream app

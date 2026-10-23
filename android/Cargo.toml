@@ -40,6 +40,12 @@ android_logger = { version = "0.15.1", default-features = false }
 # direct dep only to name winit's android activity type in the entry point
 # (eframe does not re-export winit); resolution stays on the locked 0.30.13
 winit = { version = "0.30.13", default-features = false }
+# libc: used only for `libc::_exit` in android/src/lib.rs and
+# android/src/services.rs to end the process without running JVM shutdown
+# handlers (which would fire JNI errors when called from a non-Java thread).
+# Already in Cargo.lock as a transitive dep; promoted to direct here so
+# scripts/scope-guard.sh line 11 (ALLOW_EXT) can allow it.
+libc = "0.2"
 
 [lints.clippy]
 dbg_macro = "warn"

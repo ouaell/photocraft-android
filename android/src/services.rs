@@ -8,6 +8,7 @@
 use photocraft_codecs::{ChannelLayout, EncodeOptions, Image};
 use photocraft_doc::Document;
 use photocraft_ui_egui::{Services, ExportSettings};
+use libc;
 use std::path::{Path, PathBuf};
 
 /// The three app-private roots under the app's internal data directory
@@ -163,7 +164,10 @@ pub fn native(dirs: &Dirs) -> Services {
         // `android_main` ends it once the eframe run returns.
         quit: Some(Box::new(|| {
             log::info!("Picsh: leaving: the app quits; the process ends");
-            std::process::exit(0);
+            // Use libc::_exit instead of std::process::exit so the JVM is not
+            // torn down while the Android render thread may still hold JNIEnv
+            #refs; that aborts the process with "JNI DETECTED ERROR" + SIGABRT.
+            libc::_exit(0);
         })),
         // Files must be opened and saved through a picker (Storage Access Framework) or
         // the share sheet; dialogs, clipboard and URL opening reach Android in M5.

@@ -2,6 +2,12 @@ plugins {
     id 'com.android.application'
 }
 
+// BR-6: versionCode derived from versionName (versionCode = major*10000 +
+// minor*100 + patch) so version bumps are monotonic and traceable.
+def versionNameStr = "0.8.2"
+def versionParts = versionNameStr.split("\\.")
+def versionCodeValue = (versionParts[0] as int) * 10000 + (versionParts[1] as int) * 100 + (versionParts[2] as int)
+
 android {
     compileSdk = 36
 
@@ -9,8 +15,8 @@ android {
         applicationId = "io.github.ouaell.picsh"
         minSdk = 31
         targetSdk = 36
-        versionCode = 82
-        versionName = "0.8.2"
+        versionName = versionNameStr
+        versionCode = versionCodeValue
     }
 
     buildTypes {

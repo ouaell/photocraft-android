@@ -3134,6 +3134,7 @@ dependencies = [
  "android_logger",
  "eframe",
  "egui",
+ "libc",
  "log",
  "photocraft-codecs",
  "photocraft-doc",
